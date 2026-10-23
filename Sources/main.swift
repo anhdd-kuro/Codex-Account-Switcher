@@ -1246,16 +1246,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         directUsageSnapshotsByEmail[email] = usage
         accounts = accounts.map { account in
             guard account.email == email else { return account }
+            let hasFiveHourLimit = CodexAccount.hasFiveHourLimit(plan: account.plan, planType: usage.planType ?? account.planType)
             return CodexAccount(
                 selector: account.selector,
                 email: account.email,
                 plan: account.plan,
                 fiveHourUsage: directUsageText(usage.fiveHour, weekly: false),
                 weeklyUsage: directUsageText(usage.weekly, weekly: true),
-                fiveHourUsedPercent: account.hasFiveHourLimit ? usage.fiveHour.remainingPercent : usage.weekly.remainingPercent,
+                fiveHourUsedPercent: hasFiveHourLimit ? usage.fiveHour.remainingPercent : usage.weekly.remainingPercent,
                 weeklyUsedPercent: usage.weekly.remainingPercent,
                 lastActivity: account.lastActivity,
-                isActive: account.isActive
+                isActive: account.isActive,
+                planType: usage.planType ?? account.planType
             )
         }
     }
@@ -1263,16 +1265,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private func applyingDirectUsageSnapshots(to source: [CodexAccount]) -> [CodexAccount] {
         return source.map { account in
             guard let snapshot = directUsageSnapshotsByEmail[account.email] else { return account }
+            let hasFiveHourLimit = CodexAccount.hasFiveHourLimit(plan: account.plan, planType: snapshot.planType ?? account.planType)
             return CodexAccount(
                 selector: account.selector,
                 email: account.email,
                 plan: account.plan,
                 fiveHourUsage: directUsageText(snapshot.fiveHour, weekly: false),
                 weeklyUsage: directUsageText(snapshot.weekly, weekly: true),
-                fiveHourUsedPercent: account.hasFiveHourLimit ? snapshot.fiveHour.remainingPercent : snapshot.weekly.remainingPercent,
+                fiveHourUsedPercent: hasFiveHourLimit ? snapshot.fiveHour.remainingPercent : snapshot.weekly.remainingPercent,
                 weeklyUsedPercent: snapshot.weekly.remainingPercent,
                 lastActivity: account.lastActivity,
-                isActive: account.isActive
+                isActive: account.isActive,
+                planType: snapshot.planType ?? account.planType
             )
         }
     }
@@ -3344,7 +3348,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
         return .success(DirectUsageSnapshot(
             fiveHour: fiveHour,
-            weekly: weekly
+            weekly: weekly,
+            planType: object["plan_type"] as? String
         ))
     }
 

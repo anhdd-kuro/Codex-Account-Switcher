@@ -11,9 +11,15 @@ struct CodexAccount: Equatable {
     let weeklyUsedPercent: Int?
     let lastActivity: String
     let isActive: Bool
+    /// Raw `plan_type` from the usage endpoint, e.g. `self_serve_business_prolite`.
+    var planType: String? = nil
 
-    /// Pro plans only have a weekly limit; their 5-hour figure is a placeholder.
-    var hasFiveHourLimit: Bool { !plan.lowercased().contains("pro") }
+    /// Pro plans and Business premium (prolite) seats only have a weekly limit; their 5-hour figure is a placeholder.
+    var hasFiveHourLimit: Bool { Self.hasFiveHourLimit(plan: plan, planType: planType) }
+
+    static func hasFiveHourLimit(plan: String, planType: String?) -> Bool {
+        !(planType ?? plan).lowercased().contains("pro")
+    }
 }
 
 struct HealthStatus {
@@ -123,6 +129,7 @@ struct UsageLimitWindowSnapshot: Equatable {
 struct DirectUsageSnapshot: Equatable {
     let fiveHour: UsageLimitWindowSnapshot
     let weekly: UsageLimitWindowSnapshot
+    var planType: String? = nil
 }
 
 struct ResetConsumeReceipt {
