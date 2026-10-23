@@ -196,15 +196,18 @@ final class TileView: NSView {
         return hit is NSControl ? hit : self
     }
 
+    private var restingAlpha: CGFloat = 1
+
     override func mouseDown(with event: NSEvent) {
         guard action != nil else { return super.mouseDown(with: event) }
         pressed = true
-        layer?.opacity = 0.82
+        restingAlpha = alphaValue
+        alphaValue = restingAlpha * 0.82
     }
 
     override func mouseUp(with event: NSEvent) {
         guard let action else { return super.mouseUp(with: event) }
-        layer?.opacity = 1
+        alphaValue = restingAlpha
         let inside = bounds.contains(convert(event.locationInWindow, from: nil))
         if pressed, inside { action() }
         pressed = false
