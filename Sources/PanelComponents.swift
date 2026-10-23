@@ -895,3 +895,16 @@ extension DateFormatter {
         return formatter
     }()
 }
+
+extension NSAlert {
+    /// The account panel sits at status-bar level, above ordinary modal alerts.
+    /// `runModal` resets the alert's level, so lower those windows while it runs.
+    func runAbovePanel() -> NSApplication.ModalResponse {
+        let raised = NSApp.windows.filter { $0.isVisible && $0.level > .modalPanel }
+        let levels = raised.map(\.level)
+        raised.forEach { $0.level = .normal }
+        defer { zip(raised, levels).forEach { $0.level = $1 } }
+        NSApp.activate(ignoringOtherApps: true)
+        return runModal()
+    }
+}

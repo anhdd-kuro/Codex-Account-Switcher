@@ -1056,10 +1056,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         // modal alert. Hide it before presenting the spending confirmation so the
         // confirmation cannot be obscured underneath the menu-bar panel.
         closeAccountPanel()
-        NSApp.activate(ignoringOtherApps: true)
-        alert.window.level = .modalPanel
         alert.window.center()
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        guard alert.runAbovePanel() == .alertFirstButtonReturn else { return }
 
         redeemResetCredit(account: account, credit: credit)
     }
@@ -1538,7 +1536,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         alert.addButton(withTitle: "Remove")
         alert.addButton(withTitle: "Cancel")
         NSApp.activate(ignoringOtherApps: true)
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        guard alert.runAbovePanel() == .alertFirstButtonReturn else { return }
         do {
             try claude.remove(id)
         } catch {
@@ -1854,7 +1852,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         alert.informativeText = "Installed version \(currentVersion) can be updated to \(tag)."
         alert.addButton(withTitle: "Open Release")
         alert.addButton(withTitle: "Later")
-        if alert.runModal() == .alertFirstButtonReturn, let url {
+        if alert.runAbovePanel() == .alertFirstButtonReturn, let url {
             NSWorkspace.shared.open(url)
         }
     }
@@ -1921,7 +1919,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         alert.addButton(withTitle: "Clear")
         alert.addButton(withTitle: "Cancel")
 
-        let response = alert.runModal()
+        let response = alert.runAbovePanel()
         guard let email = selectedAccountEmail(from: popup) else { return }
         if response == .alertFirstButtonReturn {
             let value = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1959,7 +1957,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         alert.addButton(withTitle: "Remove")
         alert.addButton(withTitle: "Cancel")
 
-        if alert.runModal() == .alertFirstButtonReturn,
+        if alert.runAbovePanel() == .alertFirstButtonReturn,
            let email = selectedAccountEmail(from: popup) {
             runAccountMaintenance(title: "Removing account", args: ["remove", email])
         }
@@ -1975,7 +1973,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         alert.addButton(withTitle: "Log out")
         alert.addButton(withTitle: "Cancel")
 
-        if alert.runModal() == .alertFirstButtonReturn {
+        if alert.runAbovePanel() == .alertFirstButtonReturn {
             runAccountMaintenance(title: "Logging out", args: ["remove", email])
         }
     }
@@ -2001,7 +1999,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         alert.addButton(withTitle: "Test")
         alert.addButton(withTitle: "Cancel")
 
-        let response = alert.runModal()
+        let response = alert.runAbovePanel()
         if response == .alertSecondButtonReturn {
             testUsageReminder()
             return
@@ -2054,7 +2052,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         alert.addButton(withTitle: "Save")
         alert.addButton(withTitle: "Cancel")
 
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        guard alert.runAbovePanel() == .alertFirstButtonReturn else { return }
         let switchValue = Int(thresholdField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines))
         guard let switchValue, (1...99).contains(switchValue) else {
             showAlert(title: "Invalid percentage", message: "Enter a number from 1 to 99.")
@@ -2101,7 +2099,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         alert.addButton(withTitle: "Save")
         alert.addButton(withTitle: "Cancel")
 
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        guard alert.runAbovePanel() == .alertFirstButtonReturn else { return }
         if let rawValue = modePopup.selectedItem?.representedObject as? String,
            let mode = AutoResumeMode(rawValue: rawValue) {
             autoResumeMode = mode
@@ -2130,7 +2128,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         alert.addButton(withTitle: "Save")
         alert.addButton(withTitle: "Cancel")
 
-        if alert.runModal() == .alertFirstButtonReturn,
+        if alert.runAbovePanel() == .alertFirstButtonReturn,
            let active = activePopup.selectedItem?.representedObject as? Int,
            let idle = idlePopup.selectedItem?.representedObject as? Int {
             activeRefreshInterval = active
@@ -2242,7 +2240,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         alert.informativeText = "5H \(remainingPercentText(fromUsed: account.fiveHourUsedPercent)) left · Weekly \(remainingPercentText(fromUsed: account.weeklyUsedPercent)) left\n\nCodex will relaunch after switching."
         alert.addButton(withTitle: "Switch")
         alert.addButton(withTitle: "Cancel")
-        return alert.runModal() == .alertFirstButtonReturn
+        return alert.runAbovePanel() == .alertFirstButtonReturn
     }
 
     private func switchTo(query: String, allowAutoResume: Bool = false) {
@@ -2577,7 +2575,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         alert.addButton(withTitle: "Open Settings")
         alert.addButton(withTitle: "OK")
 
-        if alert.runModal() == .alertFirstButtonReturn {
+        if alert.runAbovePanel() == .alertFirstButtonReturn {
             openNotificationSettings()
         }
     }
@@ -3790,7 +3788,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         alert.messageText = title
         alert.informativeText = message.trimmingCharacters(in: .whitespacesAndNewlines)
         alert.alertStyle = .warning
-        alert.runModal()
+        alert.runAbovePanel()
     }
 
     private func recordSwitch(from: CodexAccount?, to: CodexAccount?, automatic: Bool, reason: String, result: String) {
@@ -3884,7 +3882,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         alert.alertStyle = .informational
         alert.addButton(withTitle: "Copy")
         alert.addButton(withTitle: "Close")
-        if alert.runModal() == .alertFirstButtonReturn {
+        if alert.runAbovePanel() == .alertFirstButtonReturn {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(text, forType: .string)
         }
