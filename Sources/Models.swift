@@ -11,6 +11,9 @@ struct CodexAccount: Equatable {
     let weeklyUsedPercent: Int?
     let lastActivity: String
     let isActive: Bool
+
+    /// Pro plans only have a weekly limit; their 5-hour figure is a placeholder.
+    var hasFiveHourLimit: Bool { !plan.lowercased().contains("pro") }
 }
 
 struct HealthStatus {

@@ -469,8 +469,9 @@ final class AccountSwitcherPanelView: NSView {
                 isActive: account.isActive,
                 needsLogin: needsLogin,
                 isBest: isBest,
-                windows: [
-                    ("5h", account.fiveHourUsedPercent, snapshot.map { MenuBarGlyph.relativeReset($0.fiveHour.resetAt) ?? "" } ?? fiveHourResetText(from: account.fiveHourUsage)),
+                windows: (account.hasFiveHourLimit ? [
+                    ("5h", account.fiveHourUsedPercent, snapshot.map { MenuBarGlyph.relativeReset($0.fiveHour.resetAt) ?? "" } ?? fiveHourResetText(from: account.fiveHourUsage))
+                ] : []) + [
                     ("7d", account.weeklyUsedPercent, snapshot.map { MenuBarGlyph.relativeReset($0.weekly.resetAt) ?? "" } ?? weeklyResetText(from: account.weeklyUsage))
                 ],
                 tooltip: switchPreviewText(for: account),

@@ -1254,7 +1254,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 plan: account.plan,
                 fiveHourUsage: directUsageText(usage.fiveHour, weekly: false),
                 weeklyUsage: directUsageText(usage.weekly, weekly: true),
-                fiveHourUsedPercent: usage.fiveHour.remainingPercent,
+                fiveHourUsedPercent: account.hasFiveHourLimit ? usage.fiveHour.remainingPercent : usage.weekly.remainingPercent,
                 weeklyUsedPercent: usage.weekly.remainingPercent,
                 lastActivity: account.lastActivity,
                 isActive: account.isActive
@@ -1271,7 +1271,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 plan: account.plan,
                 fiveHourUsage: directUsageText(snapshot.fiveHour, weekly: false),
                 weeklyUsage: directUsageText(snapshot.weekly, weekly: true),
-                fiveHourUsedPercent: snapshot.fiveHour.remainingPercent,
+                fiveHourUsedPercent: account.hasFiveHourLimit ? snapshot.fiveHour.remainingPercent : snapshot.weekly.remainingPercent,
                 weeklyUsedPercent: snapshot.weekly.remainingPercent,
                 lastActivity: account.lastActivity,
                 isActive: account.isActive
@@ -1479,7 +1479,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             } else {
                 let percent = toolbarUsagePercent(for: account)
                 let snapshot = directUsageSnapshotsByEmail[account.email]
-                let reset = MenuBarGlyph.relativeReset(usageMode == .fiveHour ? snapshot?.fiveHour.resetAt : snapshot?.weekly.resetAt)
+                let reset = MenuBarGlyph.relativeReset(usageMode == .fiveHour && account.hasFiveHourLimit ? snapshot?.fiveHour.resetAt : snapshot?.weekly.resetAt)
                 parts.append((.init(logo: "logo-openai", text: remainingPercentText(fromUsed: percent), isLow: (percent ?? 100) < 10, reset: reset), "Codex \(remainingPercentText(fromUsed: percent)) left"))
             }
         }
@@ -1603,7 +1603,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     private func toolbarUsagePercent(for account: CodexAccount) -> Int? {
-        switch usageMode {
+        switch account.hasFiveHourLimit ? usageMode : .weekly {
         case .fiveHour:
             return account.fiveHourUsedPercent
         case .weekly:
