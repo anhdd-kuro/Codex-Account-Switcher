@@ -24,6 +24,7 @@ elif [[ -f "/Applications/ChatGPT.app/Contents/Resources/icon.icns" ]]; then
 fi
 
 cp "$ROOT_DIR/Sources/logo-openai.svg" "$ROOT_DIR/Sources/logo-claude.svg" "$RESOURCES_DIR/"
+cp "$ROOT_DIR/Resources/analytics-pricing.json" "$RESOURCES_DIR/"
 
 if [[ -f "$TOOLBAR_ICON_SOURCE" ]]; then
   cp "$TOOLBAR_ICON_SOURCE" "$RESOURCES_DIR/ToolbarIcon.png"
@@ -35,13 +36,14 @@ CLANG_MODULE_CACHE_PATH="$MODULE_CACHE_DIR" swiftc "$LIFECYCLE_MONITOR_SOURCE" \
   -framework AppKit \
   -o "$RESOURCES_DIR/CodexLifecycleMonitor"
 
+APP_SOURCES=()
+for source in "$ROOT_DIR"/Sources/*.swift; do
+  [[ "$source" == "$LIFECYCLE_MONITOR_SOURCE" ]] || APP_SOURCES+=("$source")
+done
+
 CLANG_MODULE_CACHE_PATH="$MODULE_CACHE_DIR" swiftc \
-  "$ROOT_DIR/Sources/AppInfrastructure.swift" \
-  "$ROOT_DIR/Sources/Models.swift" \
-  "$ROOT_DIR/Sources/ClaudeAccounts.swift" \
-  "$ROOT_DIR/Sources/PanelComponents.swift" \
-  "$ROOT_DIR/Sources/AccountPanelView.swift" \
-  "$ROOT_DIR/Sources/main.swift" \
+  "${APP_SOURCES[@]}" \
+  -O \
   -target arm64-apple-macosx14.0 \
   -module-cache-path "$MODULE_CACHE_DIR" \
   -framework AppKit \

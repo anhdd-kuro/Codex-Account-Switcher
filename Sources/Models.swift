@@ -174,6 +174,7 @@ enum AutoResumeMode: String {
 
 enum AccountPanelMode {
     case usage
+    case analytics
     case settings
     case routeB
     case resets
@@ -181,6 +182,7 @@ enum AccountPanelMode {
 
 enum SettingsPanelAction: String {
     case usageView
+    case analyticsView
     case addClaudeAccount
     case settingsView
     case routeBView

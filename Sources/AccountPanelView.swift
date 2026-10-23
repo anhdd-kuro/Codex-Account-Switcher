@@ -42,6 +42,8 @@ final class AccountSwitcherPanelView: NSView {
     private let claude: ClaudePanelModel
     private let codexUsageByEmail: [String: DirectUsageSnapshot]
     private let menuBarPreview: [MenuBarGlyph.UsagePart]
+    private let analytics: AnalyticsPanelModel
+    private static var analyticsBreakdown: AnalyticsBreakdownMode = .daily
 
     static let panelWidth: CGFloat = 372
     private let inset: CGFloat = 12
@@ -87,7 +89,8 @@ final class AccountSwitcherPanelView: NSView {
         toggleLaunchAtLogin: @escaping () -> Void,
         claude: ClaudePanelModel = .empty,
         codexUsageByEmail: [String: DirectUsageSnapshot] = [:],
-        menuBarPreview: [MenuBarGlyph.UsagePart] = []
+        menuBarPreview: [MenuBarGlyph.UsagePart] = [],
+        analytics: AnalyticsPanelModel = .empty
     ) {
         self.accounts = accounts
         self.activeAccount = activeAccount
@@ -127,6 +130,7 @@ final class AccountSwitcherPanelView: NSView {
         self.claude = claude
         self.codexUsageByEmail = codexUsageByEmail
         self.menuBarPreview = menuBarPreview
+        self.analytics = analytics
         super.init(frame: NSRect(origin: .zero, size: Self.preferredSize(mode: mode, accountCount: accounts.count + claude.accounts.count)))
         wantsLayer = true
         build()
@@ -143,6 +147,8 @@ final class AccountSwitcherPanelView: NSView {
         switch mode {
         case .usage:
             return NSSize(width: panelWidth, height: CGFloat(330 + max(0, accountCount - 1) * 74))
+        case .analytics:
+            return NSSize(width: panelWidth, height: 900)
         case .settings:
             return NSSize(width: panelWidth, height: 680)
         case .resets:
@@ -185,6 +191,8 @@ final class AccountSwitcherPanelView: NSView {
         switch mode {
         case .usage:
             bodyHeight = buildAccountsBody(into: body, theme: theme)
+        case .analytics:
+            bodyHeight = buildAnalyticsBody(into: body, theme: theme)
         case .settings:
             bodyHeight = buildSettingsBody(into: body, theme: theme)
         case .resets:
@@ -250,8 +258,12 @@ final class AccountSwitcherPanelView: NSView {
             rightEdge -= more.frame.width
             view.place(more, x: rightEdge, y: 14)
 
-            let refreshButton = GlassButton(symbol: "arrow.clockwise", style: .icon, theme: theme, accessibilityLabel: mode == .resets ? "Refresh reset credits" : "Refresh all accounts") { [weak self] in
+            let refreshButton = GlassButton(symbol: "arrow.clockwise", style: .icon, theme: theme, accessibilityLabel: mode == .resets ? "Refresh reset credits" : (mode == .analytics ? "Rescan usage logs" : "Refresh all accounts")) { [weak self] in
                 guard let self else { return }
+                if self.mode == .analytics {
+                    self.analytics.refresh()
+                    return
+                }
                 if self.mode == .resets {
                     self.performSettingsAction(.resetCreditsView)
                 }
@@ -282,6 +294,8 @@ final class AccountSwitcherPanelView: NSView {
                 return ("Switching accounts…", false)
             }
             return (lastUpdatedText == "refreshing..." ? "Refreshing…" : "Updated \(lastUpdatedText)", lastUpdatedText.hasPrefix("stale"))
+        case .analytics:
+            return analytics.subtitle
         case .settings:
             let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
             return ("Version \(version)", false)
@@ -301,6 +315,9 @@ final class AccountSwitcherPanelView: NSView {
             segments: [
                 .init(title: "Accounts", badge: nil, isSelected: mode == .usage) { [weak self] in
                     self?.performSettingsAction(.usageView)
+                },
+                .init(title: "Analytics", badge: nil, isSelected: mode == .analytics) { [weak self] in
+                    self?.performSettingsAction(.analyticsView)
                 },
                 .init(title: "Resets", badge: badge, isSelected: mode == .resets) { [weak self] in
                     self?.performSettingsAction(.resetCreditsView)
@@ -381,6 +398,8 @@ final class AccountSwitcherPanelView: NSView {
                 let text = state.knownAccounts == 0 ? (state.hasError ? "Resets unavailable" : "Checking resets…") : "No resets available"
                 view.place(makeLabel(text, size: 12, color: theme.tertiaryText), x: 16, y: 16, width: rightEdge - 24)
             }
+        case .analytics:
+            view.place(makeLabel("Estimated from local Codex and Claude logs", size: 11, color: theme.tertiaryText), x: 16, y: 17, width: rightEdge - 24)
         case .settings:
             view.place(makeLabel("Changes apply instantly", size: 11, color: theme.tertiaryText), x: 16, y: 17, width: rightEdge - 24)
         case .resets:
@@ -398,6 +417,41 @@ final class AccountSwitcherPanelView: NSView {
         case .threshold: return "Auto-switch at \(autoSwitchThreshold)%"
         case .zero: return "Auto-switch asks at 0%"
         }
+    }
+
+    // MARK: - Analytics
+
+    private func buildAnalyticsBody(into body: NSView, theme: PanelTheme) -> CGFloat {
+        AnalyticsPanelBuilder(
+            model: analytics,
+            theme: theme,
+            inset: inset,
+            width: contentWidth,
+            breakdown: Self.analyticsBreakdown,
+            selectBreakdown: { [weak self] mode in
+                Self.analyticsBreakdown = mode
+                self?.rebuildKeepingScroll()
+            }
+        ).build(into: body)
+    }
+
+    /// Rebuilds in place for local view state, keeping the scroll offset and the panel's top edge.
+    private func rebuildKeepingScroll() {
+        let scrollView = subviews.lazy.flatMap { $0.subviews }.flatMap { $0.subviews }.compactMap { $0 as? NSScrollView }.first
+        let offset = scrollView?.contentView.bounds.origin ?? .zero
+        let oldHeight = frame.height
+        build()
+        if let restored = subviews.lazy.flatMap({ $0.subviews }).flatMap({ $0.subviews }).compactMap({ $0 as? NSScrollView }).first,
+           let document = restored.documentView {
+            let maxY = max(0, document.frame.height - restored.contentView.bounds.height)
+            restored.contentView.scroll(to: NSPoint(x: 0, y: min(offset.y, maxY)))
+            restored.reflectScrolledClipView(restored.contentView)
+        }
+        guard let window, frame.height != oldHeight else { return }
+        var windowFrame = window.frame
+        windowFrame.origin.y += windowFrame.height - frame.height
+        windowFrame.size.height = frame.height
+        window.setFrame(windowFrame, display: true)
     }
 
     // MARK: - Accounts

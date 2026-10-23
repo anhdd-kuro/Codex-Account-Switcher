@@ -93,6 +93,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var updateHealthColor = NSColor.systemOrange
     private var resetCreditsByEmail: [String: ResetCreditsSnapshot] = [:]
     private let claude = ClaudeController()
+    private let analytics = AnalyticsController()
+    private var analyticsTimer: Timer?
     private var notifiedClaudeKeys = Set<String>()
     private var remindersEnabled: Bool {
         get {
@@ -290,6 +292,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             self?.checkClaudeAutomation()
         }
         claude.refresh()
+        if !demoMode {
+            analytics.onChange = { [weak self] in self?.refreshAccountPanelContentIfVisible() }
+            analytics.refresh()
+            analyticsTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in self?.analytics.refresh() }
+        }
         refreshAccounts(force: true)
         if showPanelOnLaunch {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
@@ -698,6 +705,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             health,
             resets,
             String(describing: claude.accounts),
+            "\(analytics.period)|\(analytics.snapshot.map { "\($0.period)" } ?? "")|\(analytics.snapshot?.scannedAt.timeIntervalSince1970 ?? 0)|\(analytics.status.lastError ?? "")|\(analytics.snapshot == nil ? "\(analytics.status.isScanning)|\(analytics.status.processedBytes)" : "")",
             "\(claude.isSwitching)|\(claude.lastError ?? "")|\(claude.updatedText)"
         ].joined(separator: "\u{1E}")
     }
@@ -784,7 +792,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 }
             ),
             codexUsageByEmail: directUsageSnapshotsByEmail,
-            menuBarPreview: menuBarUsageParts().map(\.part)
+            menuBarPreview: menuBarUsageParts().map(\.part),
+            analytics: AnalyticsPanelModel(
+                snapshot: analytics.snapshot,
+                status: analytics.status,
+                period: analytics.period,
+                selectPeriod: { [weak self] in self?.analytics.select($0) },
+                refresh: { [weak self] in self?.analytics.refresh() }
+            )
         )
         let controller = NSViewController()
         controller.view = panel
@@ -914,6 +929,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             claude.refreshIfNeeded(maximumAge: 30)
         case .addClaudeAccount:
             signInToClaude(email: nil)
+        case .analyticsView:
+            clearArmedSwitch()
+            accountPanelMode = .analytics
+            if !demoMode { analytics.refresh() }
         case .settingsView:
             accountPanelMode = .settings
         case .routeBView:

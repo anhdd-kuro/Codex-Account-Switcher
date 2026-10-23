@@ -72,6 +72,15 @@ The **Accounts** tab lists Codex and Claude Code subscription logins in separate
 - **Add Claude Account** opens Terminal with `claude auth login`; the new login is saved automatically. Inactive logins refresh their own tokens.
 - Profiles from the earlier Python `claude-switcher` are imported on first launch.
 
+## Analytics tab (fork addition)
+
+Token usage from the local Codex and Claude Code logs (`~/.codex/sessions`, `~/.codex/archived_sessions`, `~/.claude/projects`), ported from [TokenTracker](https://github.com/xiufengsun/TokenTracker) (MIT):
+total tokens and estimated USD cost per day, week, month or the last 24 months, a 52-week heatmap, a usage trend by model, top models, a daily and per-project breakdown, and session efficiency (edit sessions, first-pass rate, cost per edit).
+
+- Logs are only read. The index lives in `~/Library/Application Support/AI Account Switcher/analytics/`; the first build reads every log (about 100 s for 14 GB), later refreshes read only new bytes.
+- Compressed Codex rollouts (`.jsonl.zst`) are decoded by a built-in zstd decoder.
+- Prices come from `Resources/analytics-pricing.json` (TokenTracker's curated and LiteLLM prices for GPT, Codex, o-series and Claude). A "≥" marks totals that include an unpriced model.
+
 ## Install
 
 1. Download the latest version from [Releases](https://github.com/lordydord/Codex-Account-Switcher/releases/latest), unzip it and move **Codex Account Switcher** to Applications.
@@ -102,7 +111,7 @@ Reset credits work the same careful way: using one always asks first. The app ne
 
 ## Privacy
 
-- The app uses the sign-ins codex-auth already keeps on your Mac. It adds no analytics, no adverts and no extra account.
+- The app uses the sign-ins codex-auth already keeps on your Mac. It adds no telemetry, no adverts and no extra account.
 - Your sign-ins are only used to talk to ChatGPT, to check your limits and reset credits.
 - This repository contains no credentials, tokens, account IDs or real email addresses. Every screenshot uses demo accounts.
 - **Diagnostics** in the ••• menu copies a health report you can share, without tokens or account IDs.
@@ -139,6 +148,6 @@ docs/                            The website (GitHub Pages)
 
 ## Licence
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE). The Analytics engine and pricing data are adapted from [TokenTracker](https://github.com/xiufengsun/TokenTracker), MIT.
 
 Codex Account Switcher is an independent open-source project. It isn’t affiliated with or endorsed by OpenAI.
