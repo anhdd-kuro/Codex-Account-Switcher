@@ -93,7 +93,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var updateHealthColor = NSColor.systemOrange
     private var resetCreditsByEmail: [String: ResetCreditsSnapshot] = [:]
     private let claude = ClaudeController()
-    private let providerTabDefaultsKey = "lastProviderTab"
+    private var notifiedClaudeKeys = Set<String>()
     private var remindersEnabled: Bool {
         get {
             if UserDefaults.standard.object(forKey: remindersEnabledDefaultsKey) == nil {
@@ -256,7 +256,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             do {
                 try installLaunchAgent()
             } catch {
-                NSLog("Codex Account Switcher lifecycle monitor install failed: \(error.localizedDescription)")
+                NSLog("AI Account Switcher lifecycle monitor install failed: \(error.localizedDescription)")
             }
             NSApp.terminate(nil)
             return
@@ -276,7 +276,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
         configureNotifications()
         configureStatusButton()
-        claude.onChange = { [weak self] in self?.refreshUI() }
+        claude.onChange = { [weak self] in
+            self?.refreshUI()
+            self?.checkClaudeAutomation()
+        }
         claude.refresh()
         refreshAccounts(force: true)
         if showPanelOnLaunch {
@@ -425,7 +428,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private func configureStatusButton() {
         guard let button = statusItem.button else { return }
         button.title = ""
-        button.toolTip = "Codex Account Switcher"
+        button.toolTip = "AI Account Switcher"
         button.image = MenuBarGlyph.symbol("arrow.left.arrow.right", color: nil)
         button.imagePosition = .imageOnly
         button.imageHugsTitle = true
@@ -597,9 +600,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     private func showAccountPanel() {
-        let preferClaude = UserDefaults.standard.string(forKey: providerTabDefaultsKey) == "claude"
-            || (accounts.isEmpty && !claude.accounts.isEmpty)
-        accountPanelMode = preferClaude ? .claude : .usage
+        accountPanelMode = .usage
         claude.refreshIfNeeded(maximumAge: 30)
         let panel = accountPanel ?? makeAccountPanel()
         accountPanel = panel
@@ -767,9 +768,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 },
                 signIn: { [weak self] email in
                     self?.signInToClaude(email: email)
+                },
+                remove: { [weak self] id in
+                    self?.confirmRemoveClaudeAccount(id)
                 }
             ),
-            codexUsageByEmail: directUsageSnapshotsByEmail
+            codexUsageByEmail: directUsageSnapshotsByEmail,
+            menuBarPreview: menuBarUsageParts().map(\.part)
         )
         let controller = NSViewController()
         controller.view = panel
@@ -839,7 +844,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             HealthStatus(title: "Mode", value: "ChatGPT", color: .systemGreen),
             HealthStatus(title: "Refresh", value: lastUpdatedText(), color: refreshHealthColor()),
             HealthStatus(title: "Notify", value: notificationHealthTitle, color: notificationHealthColor),
-            HealthStatus(title: "Update", value: updateHealthTitle, color: updateHealthColor)
+            HealthStatus(title: "Update", value: updateHealthTitle, color: updateHealthColor),
+            HealthStatus(
+                title: "Claude",
+                value: ClaudeAccountStore.claudeExecutable() == nil ? "No CLI" : (claude.active == nil ? "Signed out" : "OK"),
+                color: ClaudeAccountStore.claudeExecutable() == nil || claude.active == nil ? .systemRed : .systemGreen
+            ),
+            HealthStatus(title: "Usage", value: claude.updatedText, color: claude.accounts.contains { $0.usageError != nil } ? .systemOrange : .systemGreen)
         ]
     }
 
@@ -890,11 +901,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         case .usageView:
             clearArmedSwitch()
             accountPanelMode = .usage
-            UserDefaults.standard.set("codex", forKey: providerTabDefaultsKey)
-        case .claudeView:
-            clearArmedSwitch()
-            accountPanelMode = .claude
-            UserDefaults.standard.set("claude", forKey: providerTabDefaultsKey)
             claude.refreshIfNeeded(maximumAge: 30)
         case .addClaudeAccount:
             signInToClaude(email: nil)
@@ -1429,7 +1435,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         button.attributedTitle = NSAttributedString(string: "")
         button.image = MenuBarGlyph.symbol("arrow.left.arrow.right", color: nil)
         button.imagePosition = .imageOnly
-        button.setAccessibilityLabel("Codex Account Switcher")
+        button.setAccessibilityLabel("AI Account Switcher")
         statusItem.length = NSStatusItem.variableLength
         button.needsDisplay = true
     }
@@ -1443,38 +1449,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             let image = statusSpinnerFrame.map { MenuBarGlyph.spinner(frame: $0, color: color, diameter: diameter) }
             return (image, statusTitle(resetStatusText, size: fontSize, color: nil), resetStatusText)
         }
-        var parts: [(logo: String, text: String, isLow: Bool, spoken: String)] = []
+        let parts = menuBarUsageParts()
+        guard !parts.isEmpty else {
+            return (MenuBarGlyph.symbol("arrow.left.arrow.right", color: nil), NSAttributedString(string: ""), "AI Account Switcher")
+        }
+        let title = MenuBarGlyph.usageTitle(parts.map(\.part), fontSize: fontSize, compact: compact, lowColor: PanelTheme.current(for: nil).color(.red))
+        return (nil, title, parts.map(\.spoken).joined(separator: ". "))
+    }
+
+    private func menuBarUsageParts() -> [(part: MenuBarGlyph.UsagePart, spoken: String)] {
+        var parts: [(part: MenuBarGlyph.UsagePart, spoken: String)] = []
         if let account = toolbarStatusAccounts().first {
             if accountNeedsLogin(account) {
-                parts.append(("logo-openai", "Sign in", true, "Codex needs a fresh sign-in"))
+                parts.append((.init(logo: "logo-openai", text: "Sign in", isLow: true), "Codex needs a fresh sign-in"))
             } else {
                 let percent = toolbarUsagePercent(for: account)
-                parts.append(("logo-openai", remainingPercentText(fromUsed: percent), (percent ?? 100) < 10, "Codex \(remainingPercentText(fromUsed: percent)) left"))
+                parts.append((.init(logo: "logo-openai", text: remainingPercentText(fromUsed: percent), isLow: (percent ?? 100) < 10), "Codex \(remainingPercentText(fromUsed: percent)) left"))
             }
         }
         if let account = claude.active {
             let percent = claudeToolbarPercent(account)
-            parts.append(("logo-claude", account.needsLogin ? "Sign in" : remainingPercentText(fromUsed: percent), account.needsLogin || (percent ?? 100) < 10, "Claude \(account.title) \(remainingPercentText(fromUsed: percent)) left"))
+            parts.append((.init(logo: "logo-claude", text: account.needsLogin ? "Sign in" : remainingPercentText(fromUsed: percent), isLow: account.needsLogin || (percent ?? 100) < 10), "Claude \(account.title) \(remainingPercentText(fromUsed: percent)) left"))
         }
-        guard !parts.isEmpty else {
-            return (MenuBarGlyph.symbol("arrow.left.arrow.right", color: nil), NSAttributedString(string: ""), "Codex Account Switcher")
-        }
-        let font = NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: .semibold)
-        let title = NSMutableAttributedString()
-        for (index, part) in parts.enumerated() {
-            if index > 0 {
-                title.append(NSAttributedString(string: compact ? " | " : "  |  ", attributes: [.font: font, .foregroundColor: NSColor.secondaryLabelColor]))
-            }
-            if let logo = MenuBarGlyph.logo(part.logo, size: fontSize + 2) {
-                let attachment = NSTextAttachment()
-                attachment.image = logo
-                attachment.bounds = NSRect(x: 0, y: (font.capHeight - logo.size.height) / 2, width: logo.size.width, height: logo.size.height)
-                title.append(NSAttributedString(attachment: attachment))
-                title.append(NSAttributedString(string: compact ? " " : "\u{2009}", attributes: [.font: font]))
-            }
-            title.append(statusTitle(part.text, size: fontSize, color: part.isLow ? PanelTheme.current(for: nil).color(.red) : nil))
-        }
-        return (nil, title, parts.map(\.spoken).joined(separator: ". "))
+        return parts
     }
 
     private func statusTitle(_ text: String, size: CGFloat, color: NSColor?) -> NSAttributedString {
@@ -1520,6 +1517,60 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             for delay in [20.0, 45.0, 90.0, 180.0] {
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in self?.claude.refresh() }
             }
+        }
+    }
+
+    private func confirmRemoveClaudeAccount(_ id: String) {
+        guard let account = claude.accounts.first(where: { $0.id == id }) else { return }
+        let alert = NSAlert()
+        alert.messageText = "Remove \(account.title)?"
+        alert.informativeText = "The saved login for \(account.email) is deleted from the Keychain. You can sign in again later."
+        alert.addButton(withTitle: "Remove")
+        alert.addButton(withTitle: "Cancel")
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        do {
+            try claude.remove(id)
+        } catch {
+            showAlert(title: "Remove Claude account", message: error.localizedDescription)
+        }
+    }
+
+    /// Usage reminders and auto-switch for Claude. Claude counts the lower of the
+    /// 5-hour and weekly windows, since either one blocks Claude Code.
+    private func checkClaudeAutomation() {
+        guard let active = claude.active, !active.needsLogin, !claude.isSwitching else { return }
+        if remindersEnabled {
+            for (metric, percent) in [("5hr", active.fiveHourRemaining), ("Weekly", active.weeklyRemaining)] {
+                guard let percent else { continue }
+                let key = "reminder|\(active.id)|\(metric)|\(reminderThreshold)"
+                if percent > reminderThreshold {
+                    notifiedClaudeKeys.remove(key)
+                } else if notifiedClaudeKeys.insert(key).inserted {
+                    sendNotification(title: "Claude usage is low", subtitle: "\(active.title) · \(metric) \(percent)%", body: "\(active.email) is at or below \(reminderThreshold)%.")
+                }
+            }
+        }
+        let mode = autoSwitchMode
+        guard mode != .off else { return }
+        let limit = mode == .zero ? 0 : autoSwitchThreshold
+        func level(_ account: ClaudeAccountSummary) -> Int { min(account.fiveHourRemaining ?? -1, account.weeklyRemaining ?? 100) }
+        guard level(active) <= limit,
+              let target = claude.accounts
+                .filter({ !$0.isActive && !$0.needsLogin && level($0) > limit })
+                .max(by: { level($0) < level($1) }) else { return }
+        let key = "switch|\(active.id)|\(target.id)|\(limit)|\(mode.rawValue)"
+        guard notifiedClaudeKeys.insert(key).inserted else { return }
+        if mode == .threshold {
+            switchClaudeAccount(target.id)
+        } else {
+            sendNotification(
+                title: "Claude usage is low",
+                subtitle: "\(active.title) \(level(active))% -> \(target.title) \(level(target))%",
+                body: "Switch Claude Code to \(target.title)?",
+                categoryIdentifier: autoSwitchNotificationCategory,
+                userInfo: ["claudeProfileID": target.id]
+            )
         }
     }
 
@@ -1827,7 +1878,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                     self.updateHealthTitle = "Current"
                     self.updateHealthColor = .systemGreen
                     if showResult {
-                        self.showAlert(title: "Codex Account Switcher is up to date", message: "Installed version \(currentVersion) matches the latest GitHub release.")
+                        self.showAlert(title: "AI Account Switcher is up to date", message: "Installed version \(currentVersion) matches the latest GitHub release.")
                     }
                 }
                 self.refreshAccountPanelContentIfVisible()
@@ -1957,7 +2008,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
         let alert = NSAlert()
         alert.messageText = "Log out of this account?"
-        alert.informativeText = "This removes \(account.email) from Codex Account Switcher on this Mac. You can add it again later by signing in."
+        alert.informativeText = "This removes \(account.email) from AI Account Switcher on this Mac. You can add it again later by signing in."
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Log out")
         alert.addButton(withTitle: "Cancel")
@@ -2513,7 +2564,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             )
             UNUserNotificationCenter.current().add(request) { error in
                 if let error {
-                    NSLog("Codex Account Switcher notification failed: \(error.localizedDescription)")
+                    NSLog("AI Account Switcher notification failed: \(error.localizedDescription)")
                     if reportResult {
                         DispatchQueue.main.async {
                             self.showNotificationSettingsAlert(message: self.notificationSettingsMessage())
@@ -2521,7 +2572,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                     }
                 } else if reportResult {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        self.showAlert(title: "Test notification sent", message: "If no banner appeared, check System Settings > Notifications > Codex Account Switcher and make sure alerts are enabled.")
+                        self.showAlert(title: "Test notification sent", message: "If no banner appeared, check System Settings > Notifications > AI Account Switcher and make sure alerts are enabled.")
                     }
                 }
             }
@@ -2553,7 +2604,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     private func notificationSettingsMessage() -> String {
-        "Enable notifications for Codex Account Switcher in System Settings > Notifications, then run Test Notification again. If it is not listed yet, quit and reopen the switcher once after this update."
+        "Enable notifications for AI Account Switcher in System Settings > Notifications, then run Test Notification again. If it is not listed yet, quit and reopen the switcher once after this update."
     }
 
     private func showNotificationSettingsAlert(message: String) {
@@ -2607,7 +2658,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             throw NSError(
                 domain: "CodexAccountSwitcher",
                 code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "The lifecycle monitor is missing from the app bundle. Reinstall Codex Account Switcher."]
+                userInfo: [NSLocalizedDescriptionKey: "The lifecycle monitor is missing from the app bundle. Reinstall AI Account Switcher."]
             )
         }
         let plist = """
@@ -2681,6 +2732,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         defer { completionHandler() }
         switch response.actionIdentifier {
         case switchNowActionIdentifier:
+            if let profileID = response.notification.request.content.userInfo["claudeProfileID"] as? String {
+                DispatchQueue.main.async { [weak self] in self?.switchClaudeAccount(profileID) }
+                return
+            }
             guard let targetEmail = response.notification.request.content.userInfo["targetEmail"] as? String else { return }
             DispatchQueue.main.async { [weak self] in
                 self?.switchTo(query: targetEmail, allowAutoResume: true)
@@ -2742,7 +2797,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 self.copyResumePromptToClipboard()
                 self.sendNotification(
                     title: "Resume prompt copied",
-                    subtitle: "Codex Account Switcher",
+                    subtitle: "AI Account Switcher",
                     body: "The Mac was active, so the prompt was copied instead of pasted."
                 )
                 return
@@ -2770,7 +2825,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             sendNotification(
                 title: "Resume prompt copied",
                 subtitle: "Accessibility needed",
-                body: "Allow Accessibility for Codex Account Switcher, then paste the prompt into Codex."
+                body: "Allow Accessibility for AI Account Switcher, then paste the prompt into Codex."
             )
             return
         }
@@ -3845,7 +3900,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             return "\(stamp) | reset \(entry.accountLabel) | \(entry.result) | \(credits) | \(usage), \(weekly) | \(entry.detail)"
         }
         return ([
-            "Codex Account Switcher \(version)",
+            "AI Account Switcher \(version)",
             "macOS \(ProcessInfo.processInfo.operatingSystemVersionString)",
             "codex-auth: \(auth)",
             "desktop: \(desktop)",

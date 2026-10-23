@@ -4,7 +4,7 @@
   </a>
 </p>
 
-<h1 align="center">Codex Account Switcher</h1>
+<h1 align="center">AI Account Switcher</h1>
 
 <p align="center">
   Switch Codex accounts without breaking your flow.<br>
@@ -62,7 +62,7 @@ A ground-up redesign for macOS 27, and a much lighter app underneath.
 
 Read the [full release notes](docs/release-notes/v3.0.md).
 
-## Claude accounts (fork addition)
+## Claude accounts (fork addition: AI Account Switcher)
 
 The **Claude** tab manages Claude Code subscription logins next to Codex.
 

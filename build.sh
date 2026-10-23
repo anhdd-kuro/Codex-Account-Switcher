@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="$ROOT_DIR/build"
-APP_NAME="Codex Account Switcher"
+APP_NAME="AI Account Switcher"
 APP_DIR="$BUILD_DIR/$APP_NAME.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
@@ -14,7 +14,7 @@ ICON_SOURCE="$ROOT_DIR/Sources/icon.png"
 TOOLBAR_ICON_SOURCE="$ROOT_DIR/Sources/toolbar-icon.png"
 LIFECYCLE_MONITOR_SOURCE="$ROOT_DIR/Sources/LifecycleMonitor.swift"
 
-rm -rf "$APP_DIR" "$BUILD_DIR/ModuleCache" "$BUILD_DIR/Codex Account Switcher 2.app" "$BUILD_DIR/Codex Account Switcher 3.app"
+rm -rf "$APP_DIR" "$BUILD_DIR/ModuleCache" "$BUILD_DIR/AI Account Switcher 2.app" "$BUILD_DIR/AI Account Switcher 3.app"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$MODULE_CACHE_DIR"
 
 if [[ -f "$ICON_SOURCE" ]]; then
@@ -62,13 +62,13 @@ cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundleName</key>
-  <string>Codex Account Switcher</string>
+  <string>AI Account Switcher</string>
   <key>CFBundleDisplayName</key>
-  <string>Codex Account Switcher</string>
+  <string>AI Account Switcher</string>
   <key>CFBundleIconFile</key>
   <string>AccountSwitcherIcon.png</string>
   <key>NSUserNotificationUsageDescription</key>
-  <string>Codex Account Switcher sends low-usage reminders when your active account is near the configured threshold.</string>
+  <string>AI Account Switcher sends low-usage reminders when your active account is near the configured threshold.</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>

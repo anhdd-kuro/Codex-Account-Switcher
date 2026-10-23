@@ -12,7 +12,7 @@ for key in ProcessInfo.processInfo.environment.keys {
 
 private let switcherBundleID = "com.mohamedfuad.codexaccountswitcher"
 private let targetBundleIDs: Set<String> = ["com.openai.codex", "com.openai.chat"]
-private let switcherURL = URL(fileURLWithPath: "/Applications/Codex Account Switcher.app")
+private let switcherURL = URL(fileURLWithPath: "/Applications/AI Account Switcher.app")
 private let grace: TimeInterval = 5
 
 final class LifecycleMonitor {

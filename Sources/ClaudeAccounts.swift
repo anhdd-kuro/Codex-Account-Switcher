@@ -613,8 +613,9 @@ struct ClaudePanelModel {
     let isSwitching: Bool
     let switchAccount: (String) -> Void
     let signIn: (String?) -> Void
+    let remove: (String) -> Void
 
-    static let empty = ClaudePanelModel(accounts: [], lastError: nil, updatedText: "never", isSwitching: false, switchAccount: { _ in }, signIn: { _ in })
+    static let empty = ClaudePanelModel(accounts: [], lastError: nil, updatedText: "never", isSwitching: false, switchAccount: { _ in }, signIn: { _ in }, remove: { _ in })
 
     var active: ClaudeAccountSummary? { accounts.first(where: \.isActive) }
 }

@@ -14,7 +14,7 @@ mkdir -p "$TEST_BUILD_DIR"
 
 "$TEST_BINARY"
 
-APP_BINARY="$ROOT_DIR/build/Codex Account Switcher.app/Contents/MacOS/CodexAccountSwitcher"
+APP_BINARY="$ROOT_DIR/build/AI Account Switcher.app/Contents/MacOS/CodexAccountSwitcher"
 if [[ ! -x "$APP_BINARY" ]]; then
   /bin/bash "$ROOT_DIR/build.sh" >/dev/null
 fi

@@ -838,15 +838,41 @@ final class StackedBarView: NSView {
 enum MenuBarGlyph {
     /// A bundled SVG logo filled with the menu bar's label colour at draw time,
     /// so it stays white on dark menu bars and black on light ones.
-    static func logo(_ name: String, size: CGFloat) -> NSImage? {
+    static func logo(_ name: String, size: CGFloat, color: NSColor = .labelColor) -> NSImage? {
         guard let url = Bundle.main.url(forResource: name, withExtension: "svg"),
               let source = NSImage(contentsOf: url) else { return nil }
         return NSImage(size: NSSize(width: size, height: size), flipped: false) { rect in
             source.draw(in: rect)
-            NSColor.labelColor.set()
+            color.set()
             rect.fill(using: .sourceAtop)
             return true
         }
+    }
+
+    struct UsagePart {
+        let logo: String
+        let text: String
+        let isLow: Bool
+    }
+
+    /// `[logo] 100%  |  [logo] 95%`, shared by the status item and its preview.
+    static func usageTitle(_ parts: [UsagePart], fontSize: CGFloat, compact: Bool, textColor: NSColor = .labelColor, lowColor: NSColor, separatorColor: NSColor = .secondaryLabelColor) -> NSAttributedString {
+        let font = NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: .semibold)
+        let title = NSMutableAttributedString()
+        for (index, part) in parts.enumerated() {
+            if index > 0 {
+                title.append(NSAttributedString(string: compact ? "  |  " : "   |   ", attributes: [.font: font, .foregroundColor: separatorColor]))
+            }
+            if let image = logo(part.logo, size: fontSize + 2, color: textColor) {
+                let attachment = NSTextAttachment()
+                attachment.image = image
+                attachment.bounds = NSRect(x: 0, y: (font.capHeight - image.size.height) / 2, width: image.size.width, height: image.size.height)
+                title.append(NSAttributedString(attachment: attachment))
+                title.append(NSAttributedString(string: " ", attributes: [.font: font, .kern: compact ? 0 : 1.5]))
+            }
+            title.append(NSAttributedString(string: part.text, attributes: [.font: font, .foregroundColor: part.isLow ? lowColor : textColor]))
+        }
+        return title
     }
 
     /// A small usage ring. The track uses the menu bar's own label colour, so it adapts to light and dark menu bars.

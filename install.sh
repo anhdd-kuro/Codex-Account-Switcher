@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_PATH="$(/bin/bash "$ROOT_DIR/build.sh")"
 DEST_DIR="/Applications"
-DEST_APP="$DEST_DIR/Codex Account Switcher.app"
+DEST_APP="$DEST_DIR/AI Account Switcher.app"
 LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister"
 
 mkdir -p "$DEST_DIR"

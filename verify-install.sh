@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-APP="/Applications/Codex Account Switcher.app"
+APP="/Applications/AI Account Switcher.app"
 [[ -d "$APP" ]]
 /usr/bin/codesign --verify --deep --strict "$APP"
 /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist"
