@@ -38,7 +38,7 @@ enum AnalyticsBreakdownMode {
     case projects
 }
 
-/// Lays out the Analytics tab body: period, headline, tiles, top models, heatmap, trend, tables, efficiency.
+/// Lays out the Analytics tab body: period, headline, tiles, top models, heatmap, trend, tables.
 struct AnalyticsPanelBuilder {
     let model: AnalyticsPanelModel
     let theme: PanelTheme
@@ -64,7 +64,7 @@ struct AnalyticsPanelBuilder {
         y = heatmap(snapshot, into: body, y: y)
         y = trend(snapshot, into: body, y: y)
         y = breakdownSection(snapshot, into: body, y: y)
-        return efficiency(snapshot, into: body, y: y)
+        return y
     }
 
     // MARK: - Shared pieces
@@ -194,7 +194,7 @@ struct AnalyticsPanelBuilder {
         if snapshot.topModels.isEmpty {
             card.place(makeLabel("No usage in this period", size: 12, color: theme.tertiaryText), x: tilePadding, y: 9)
         }
-        for (index, model) in snapshot.topModels.prefix(3).enumerated() {
+        for (index, model) in snapshot.topModels.prefix(5).enumerated() {
             let rowY = 4 + CGFloat(index) * rowHeight
             card.place(makeLabel("\(index + 1)", size: 11, weight: .medium, color: theme.tertiaryText, monospacedDigits: true), x: tilePadding, y: rowY + 7)
             card.addSubview(DotView(frame: NSRect(x: 28, y: rowY + 11, width: 7, height: 7), color: AnalyticsPanelPalette.modelColor(model.name)))

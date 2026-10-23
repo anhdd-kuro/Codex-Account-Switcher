@@ -95,59 +95,6 @@ extension AnalyticsPanelBuilder {
         return AnalyticsTableView(frame: frame, columns: columns, rows: rows, rowHeight: 30, theme: theme, accessibilityLabel: "Project usage, \(rows.count) projects")
     }
 
-    // MARK: - 8. Session efficiency
-
-    func efficiency(_ snapshot: AnalyticsSnapshot, into body: NSView, y startY: CGFloat) -> CGFloat {
-        var y = sectionHeader("Session efficiency", into: body, y: startY)
-        guard let efficiency = snapshot.efficiency, efficiency.sessions > 0 else {
-            let card = tile(y: y, height: 44)
-            card.place(makeLabel("No sessions in this period", size: 12, color: theme.tertiaryText), x: tilePadding, y: 13)
-            body.addSubview(card)
-            return card.frame.maxY + 4
-        }
-        let editRate = Double(efficiency.editSessions) / Double(efficiency.sessions)
-        let firstPass = efficiency.editSessions > 0 ? Double(efficiency.firstPassSessions) / Double(efficiency.editSessions) : nil
-        let items: [(String, String, String)] = [
-            ("Edit sessions", AnalyticsPanelFormat.percent(editRate), "\(efficiency.editSessions)/\(efficiency.sessions)"),
-            ("First-pass", AnalyticsPanelFormat.percent(firstPass), "\(efficiency.firstPassSessions)/\(efficiency.editSessions)"),
-            ("Cost / edit", efficiency.costPerEditUSD.map { efficiency.costIsPartial ? AnalyticsPanelFormat.estimatedCost($0, isPartial: true) : AnalyticsPanelFormat.usd($0) } ?? "—", efficiency.editTurns == 1 ? "1 edit turn" : "\(AnalyticsPanelFormat.grouped(efficiency.editTurns)) edit turns")
-        ]
-        let gap: CGFloat = 8
-        let tileWidth = (width - gap * 2) / 3
-        for (index, item) in items.enumerated() {
-            let card = tile(y: y, height: 64, x: inset + CGFloat(index) * (tileWidth + gap), width: tileWidth, radius: 10)
-            card.place(makeLabel(item.0, size: 10.5, color: theme.secondaryText), x: 10, y: 8, width: tileWidth - 20)
-            card.place(makeLabel(item.1, size: 16, weight: .semibold, color: theme.primaryText, monospacedDigits: true), x: 10, y: 23, width: tileWidth - 20)
-            card.place(makeLabel(item.2, size: 10.5, color: theme.tertiaryText, monospacedDigits: true), x: 10, y: 45, width: tileWidth - 20)
-            body.addSubview(card)
-        }
-        y += 64 + 8
-        guard !efficiency.byModel.isEmpty else { return y + 4 }
-        let table = efficiencyTable(efficiency.byModel)
-        let card = tile(y: y, height: table.frame.height + 4)
-        card.place(table, x: 0, y: 2)
-        body.addSubview(card)
-        return card.frame.maxY + 12
-    }
-
-    private func efficiencyTable(_ models: [AnalyticsEfficiencyModel]) -> AnalyticsTableView {
-        let columns = [
-            AnalyticsTableColumn(title: "Model", width: 0, alignment: .left),
-            AnalyticsTableColumn(title: "Edit", width: 56, alignment: .right),
-            AnalyticsTableColumn(title: "1st pass", width: 50, alignment: .right),
-            AnalyticsTableColumn(title: "Tok/edit", width: 56, alignment: .right)
-        ]
-        let rows = models.prefix(5).map { model in
-            AnalyticsTableRow(cells: [
-                model.model,
-                "\(model.editSessions)/\(model.sessions)",
-                AnalyticsPanelFormat.percent(model.firstPassRate),
-                model.tokensPerEdit.map(AnalyticsPanelFormat.compact) ?? "—"
-            ], toolTip: "\(model.model)\n\(model.editSessions) of \(model.sessions) sessions edited files")
-        }
-        return AnalyticsTableView(frame: NSRect(x: 0, y: 0, width: width, height: 0), columns: columns, rows: Array(rows), theme: theme, accessibilityLabel: "Efficiency by model")
-    }
-
     // MARK: - 9. Empty, scanning and error states
 
     func emptyTile(into body: NSView, y: CGFloat) -> CGFloat {

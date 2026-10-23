@@ -187,7 +187,7 @@ struct AnalyticsSnapshotBuilder {
         let all = merged.saturatingSum { $0.1 }
         return merged
             .sorted { $0.1 != $1.1 ? $0.1 > $1.1 : $0.0 < $1.0 }
-            .prefix(3)
+            .prefix(5)
             .map { AnalyticsModelShare(name: $0.0, tokens: $0.1, share: all > 0 ? Double($0.1) / Double(all) * 100 : 0) }
     }
 
