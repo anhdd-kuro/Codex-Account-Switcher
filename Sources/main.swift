@@ -1443,37 +1443,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             let image = statusSpinnerFrame.map { MenuBarGlyph.spinner(frame: $0, color: color, diameter: diameter) }
             return (image, statusTitle(resetStatusText, size: fontSize, color: nil), resetStatusText)
         }
-        guard let account = toolbarStatusAccounts().first else {
-            if let claudeAccount = claude.active {
-                let percent = claudeToolbarPercent(claudeAccount)
-                return (
-                    MenuBarGlyph.ring(percent: percent, color: usageStatusColor(for: percent), diameter: diameter, lineWidth: compact ? 2 : 2.2),
-                    statusTitle(claudeToolbarText(claudeAccount), size: fontSize, color: (percent ?? 100) < 10 ? .systemRed : nil),
-                    "Claude \(claudeAccount.title), \(remainingPercentText(fromUsed: percent)) left"
-                )
+        var parts: [(logo: String, text: String, isLow: Bool, spoken: String)] = []
+        if let account = toolbarStatusAccounts().first {
+            if accountNeedsLogin(account) {
+                parts.append(("logo-openai", "Sign in", true, "Codex needs a fresh sign-in"))
+            } else {
+                let percent = toolbarUsagePercent(for: account)
+                parts.append(("logo-openai", remainingPercentText(fromUsed: percent), (percent ?? 100) < 10, "Codex \(remainingPercentText(fromUsed: percent)) left"))
             }
+        }
+        if let account = claude.active {
+            let percent = claudeToolbarPercent(account)
+            parts.append(("logo-claude", account.needsLogin ? "Sign in" : remainingPercentText(fromUsed: percent), account.needsLogin || (percent ?? 100) < 10, "Claude \(account.title) \(remainingPercentText(fromUsed: percent)) left"))
+        }
+        guard !parts.isEmpty else {
             return (MenuBarGlyph.symbol("arrow.left.arrow.right", color: nil), NSAttributedString(string: ""), "Codex Account Switcher")
         }
-        let label = toolbarLabel(for: account)
-        if accountNeedsLogin(account) {
-            return (
-                MenuBarGlyph.symbol("exclamationmark.triangle.fill", color: .systemRed, pointSize: fontSize - 1.5),
-                statusTitle("\(label) Sign in", size: fontSize, color: .systemRed),
-                "Account \(label) needs a fresh sign-in"
-            )
+        let font = NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: .semibold)
+        let title = NSMutableAttributedString()
+        for (index, part) in parts.enumerated() {
+            if index > 0 {
+                title.append(NSAttributedString(string: compact ? " | " : "  |  ", attributes: [.font: font, .foregroundColor: NSColor.secondaryLabelColor]))
+            }
+            if let logo = MenuBarGlyph.logo(part.logo, size: fontSize + 2) {
+                let attachment = NSTextAttachment()
+                attachment.image = logo
+                attachment.bounds = NSRect(x: 0, y: (font.capHeight - logo.size.height) / 2, width: logo.size.width, height: logo.size.height)
+                title.append(NSAttributedString(attachment: attachment))
+                title.append(NSAttributedString(string: compact ? " " : "\u{2009}", attributes: [.font: font]))
+            }
+            title.append(statusTitle(part.text, size: fontSize, color: part.isLow ? PanelTheme.current(for: nil).color(.red) : nil))
         }
-        let percent = toolbarUsagePercent(for: account)
-        let image = MenuBarGlyph.ring(percent: percent, color: usageStatusColor(for: percent), diameter: diameter, lineWidth: compact ? 2 : 2.2)
-        let isLow = (percent ?? 100) < 10
-        let window = usageMode == .fiveHour ? "5-hour" : "weekly"
-        let title = NSMutableAttributedString(attributedString: statusTitle(toolbarStatusText(for: account), size: fontSize, color: isLow ? .systemRed : nil))
-        var accessibility = "Account \(label), \(remainingPercentText(fromUsed: percent)) of the \(window) window left"
-        if let claudeAccount = claude.active {
-            let claudePercent = claudeToolbarPercent(claudeAccount)
-            title.append(statusTitle("  \(claudeToolbarText(claudeAccount))", size: fontSize, color: (claudePercent ?? 100) < 10 ? .systemRed : nil))
-            accessibility += ". Claude \(claudeAccount.title), \(remainingPercentText(fromUsed: claudePercent)) left"
-        }
-        return (image, title, accessibility)
+        return (nil, title, parts.map(\.spoken).joined(separator: ". "))
     }
 
     private func statusTitle(_ text: String, size: CGFloat, color: NSColor?) -> NSAttributedString {

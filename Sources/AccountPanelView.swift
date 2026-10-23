@@ -447,12 +447,6 @@ final class AccountSwitcherPanelView: NSView {
                     self?.switchAccount(account.email)
                 }
             ]
-        } else if !account.isActive {
-            let button = GlassButton(title: isSwitching ? "Switching…" : "Switch", style: .primary, theme: theme, height: 24, fontSize: 12, accessibilityLabel: "Switch to \(account.email)") { [weak self] in
-                self?.switchAccount(account.email)
-            }
-            button.isEnabled = !isSwitching
-            trailing = [button]
         }
         return usageCard(
             UsageCard(
@@ -463,8 +457,8 @@ final class AccountSwitcherPanelView: NSView {
                 needsLogin: needsLogin,
                 isBest: isBest,
                 windows: [
-                    ("5h", account.fiveHourUsedPercent, snapshot.flatMap { relativeReset($0.fiveHour.resetAt) } ?? fiveHourResetText(from: account.fiveHourUsage)),
-                    ("7d", account.weeklyUsedPercent, snapshot.flatMap { relativeReset($0.weekly.resetAt) } ?? weeklyResetText(from: account.weeklyUsage))
+                    ("5h", account.fiveHourUsedPercent, snapshot.map { relativeReset($0.fiveHour.resetAt) ?? "" } ?? fiveHourResetText(from: account.fiveHourUsage)),
+                    ("7d", account.weeklyUsedPercent, snapshot.map { relativeReset($0.weekly.resetAt) ?? "" } ?? weeklyResetText(from: account.weeklyUsage))
                 ],
                 tooltip: switchPreviewText(for: account),
                 switchAction: account.isActive || needsLogin || isArmed || isSwitching ? nil : { [weak self] in self?.switchAccount(account.email) }
@@ -1271,12 +1265,6 @@ extension AccountSwitcherPanelView {
                 trailing = [GlassButton(title: "Sign In…", style: .secondary, theme: theme, height: 24, fontSize: 12) { [weak self] in
                     self?.claude.signIn(account.email)
                 }]
-            } else if !account.isActive {
-                let button = GlassButton(title: claude.isSwitching ? "Switching…" : "Switch", style: .primary, theme: theme, height: 24, fontSize: 12, accessibilityLabel: "Switch Claude to \(account.title)") { [weak self] in
-                    self?.claude.switchAccount(account.id)
-                }
-                button.isEnabled = !claude.isSwitching
-                trailing = [button]
             }
             let canSwitch = !account.isActive && !account.needsLogin && !claude.isSwitching
             let card = usageCard(
@@ -1288,8 +1276,8 @@ extension AccountSwitcherPanelView {
                     needsLogin: account.needsLogin,
                     isBest: account.id == bestID,
                     windows: [
-                        ("5h", account.fiveHourRemaining, relativeReset(account.fiveHourResetAt) ?? "--"),
-                        ("7d", account.weeklyRemaining, relativeReset(account.weeklyResetAt) ?? "--")
+                        ("5h", account.fiveHourRemaining, relativeReset(account.fiveHourResetAt) ?? ""),
+                        ("7d", account.weeklyRemaining, relativeReset(account.weeklyResetAt) ?? "")
                     ],
                     tooltip: ["\(account.title) · \(account.plan)", account.email, account.usageError].compactMap { $0 }.joined(separator: "\n"),
                     switchAction: canSwitch ? { [weak self] in self?.claude.switchAccount(account.id) } : nil

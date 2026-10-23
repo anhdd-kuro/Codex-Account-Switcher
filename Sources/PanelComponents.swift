@@ -836,6 +836,19 @@ final class StackedBarView: NSView {
 // MARK: - Menu bar glyphs
 
 enum MenuBarGlyph {
+    /// A bundled SVG logo filled with the menu bar's label colour at draw time,
+    /// so it stays white on dark menu bars and black on light ones.
+    static func logo(_ name: String, size: CGFloat) -> NSImage? {
+        guard let url = Bundle.main.url(forResource: name, withExtension: "svg"),
+              let source = NSImage(contentsOf: url) else { return nil }
+        return NSImage(size: NSSize(width: size, height: size), flipped: false) { rect in
+            source.draw(in: rect)
+            NSColor.labelColor.set()
+            rect.fill(using: .sourceAtop)
+            return true
+        }
+    }
+
     /// A small usage ring. The track uses the menu bar's own label colour, so it adapts to light and dark menu bars.
     static func ring(percent: Int?, color: NSColor, diameter: CGFloat = 13, lineWidth: CGFloat = 2.2) -> NSImage {
         let image = NSImage(size: NSSize(width: diameter, height: diameter), flipped: false) { rect in
