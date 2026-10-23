@@ -754,9 +754,19 @@ enum MenuBarGlyph {
         let logo: String
         let text: String
         let isLow: Bool
+        var reset: String? = nil
     }
 
-    /// `[logo] 100%  |  [logo] 95%`, shared by the status item and its preview.
+    /// Time until `date` in its largest unit: `45m`, `4h`, `3d`.
+    static func relativeReset(_ date: Date?) -> String? {
+        guard let date else { return nil }
+        let seconds = max(0, date.timeIntervalSinceNow)
+        if seconds < 3600 { return "\(max(1, Int(seconds / 60)))m" }
+        if seconds < 86_400 { return "\(Int(seconds / 3600))h" }
+        return "\(Int(seconds / 86_400))d"
+    }
+
+    /// `[logo] 100% · 4h  |  [logo] 95% · 3d`, shared by the status item and its preview.
     static func usageTitle(_ parts: [UsagePart], fontSize: CGFloat, compact: Bool, textColor: NSColor = .labelColor, lowColor: NSColor, separatorColor: NSColor = .secondaryLabelColor) -> NSAttributedString {
         let font = NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: .semibold)
         let title = NSMutableAttributedString()
@@ -772,6 +782,9 @@ enum MenuBarGlyph {
                 title.append(NSAttributedString(string: " ", attributes: [.font: font, .kern: compact ? 0 : 1.5]))
             }
             title.append(NSAttributedString(string: part.text, attributes: [.font: font, .foregroundColor: part.isLow ? lowColor : textColor]))
+            if let reset = part.reset {
+                title.append(NSAttributedString(string: " · \(reset)", attributes: [.font: font, .foregroundColor: separatorColor]))
+            }
         }
         return title
     }

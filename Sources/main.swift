@@ -1478,12 +1478,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 parts.append((.init(logo: "logo-openai", text: "Sign in", isLow: true), "Codex needs a fresh sign-in"))
             } else {
                 let percent = toolbarUsagePercent(for: account)
-                parts.append((.init(logo: "logo-openai", text: remainingPercentText(fromUsed: percent), isLow: (percent ?? 100) < 10), "Codex \(remainingPercentText(fromUsed: percent)) left"))
+                let snapshot = directUsageSnapshotsByEmail[account.email]
+                let reset = MenuBarGlyph.relativeReset(usageMode == .fiveHour ? snapshot?.fiveHour.resetAt : snapshot?.weekly.resetAt)
+                parts.append((.init(logo: "logo-openai", text: remainingPercentText(fromUsed: percent), isLow: (percent ?? 100) < 10, reset: reset), "Codex \(remainingPercentText(fromUsed: percent)) left"))
             }
         }
         if let account = claude.active {
             let percent = claudeToolbarPercent(account)
-            parts.append((.init(logo: "logo-claude", text: account.needsLogin ? "Sign in" : remainingPercentText(fromUsed: percent), isLow: account.needsLogin || (percent ?? 100) < 10), "Claude \(account.title) \(remainingPercentText(fromUsed: percent)) left"))
+            let reset = account.needsLogin ? nil : MenuBarGlyph.relativeReset(claudeUsageMode == .fiveHour ? account.fiveHourResetAt : account.weeklyResetAt)
+            parts.append((.init(logo: "logo-claude", text: account.needsLogin ? "Sign in" : remainingPercentText(fromUsed: percent), isLow: account.needsLogin || (percent ?? 100) < 10, reset: reset), "Claude \(account.title) \(remainingPercentText(fromUsed: percent)) left"))
         }
         return parts
     }
@@ -1590,7 +1593,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         if let resetStatusText {
             return "reset|\(resetStatusText)|\(statusSpinnerFrame.map { String($0 % 12) } ?? "-")|\(toolbarDisplayStyle.rawValue)"
         }
-        return menuBarUsageParts().map { "\($0.part.logo)|\($0.part.text)|\($0.part.isLow)" }.joined(separator: "||") + "|\(toolbarDisplayStyle.rawValue)"
+        return menuBarUsageParts().map { "\($0.part.logo)|\($0.part.text)|\($0.part.isLow)|\($0.part.reset ?? "")" }.joined(separator: "||") + "|\(toolbarDisplayStyle.rawValue)"
     }
 
     private func setResetStatus(_ text: String?) {

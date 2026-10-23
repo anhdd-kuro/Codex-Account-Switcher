@@ -470,8 +470,8 @@ final class AccountSwitcherPanelView: NSView {
                 needsLogin: needsLogin,
                 isBest: isBest,
                 windows: [
-                    ("5h", account.fiveHourUsedPercent, snapshot.map { relativeReset($0.fiveHour.resetAt) ?? "" } ?? fiveHourResetText(from: account.fiveHourUsage)),
-                    ("7d", account.weeklyUsedPercent, snapshot.map { relativeReset($0.weekly.resetAt) ?? "" } ?? weeklyResetText(from: account.weeklyUsage))
+                    ("5h", account.fiveHourUsedPercent, snapshot.map { MenuBarGlyph.relativeReset($0.fiveHour.resetAt) ?? "" } ?? fiveHourResetText(from: account.fiveHourUsage)),
+                    ("7d", account.weeklyUsedPercent, snapshot.map { MenuBarGlyph.relativeReset($0.weekly.resetAt) ?? "" } ?? weeklyResetText(from: account.weeklyUsage))
                 ],
                 tooltip: switchPreviewText(for: account),
                 switchAction: account.isActive || needsLogin || isArmed || isSwitching ? nil : { [weak self] in self?.switchAccount(account.email) }
@@ -494,14 +494,6 @@ final class AccountSwitcherPanelView: NSView {
         let windows: [(String, Int?, String)]
         let tooltip: String?
         let switchAction: (() -> Void)?
-    }
-
-    private func relativeReset(_ date: Date?) -> String? {
-        guard let date else { return nil }
-        let seconds = max(0, date.timeIntervalSinceNow)
-        if seconds < 3600 { return "\(max(1, Int(seconds / 60)))m" }
-        if seconds < 86_400 { return "\(Int(seconds / 3600))h" }
-        return "\(Int(seconds / 86_400))d"
     }
 
     /// A header line (identity, status, action) followed by one bar per usage window.
@@ -1305,8 +1297,8 @@ extension AccountSwitcherPanelView {
                     needsLogin: account.needsLogin,
                     isBest: account.id == bestID,
                     windows: [
-                        ("5h", account.fiveHourRemaining, relativeReset(account.fiveHourResetAt) ?? ""),
-                        ("7d", account.weeklyRemaining, relativeReset(account.weeklyResetAt) ?? "")
+                        ("5h", account.fiveHourRemaining, MenuBarGlyph.relativeReset(account.fiveHourResetAt) ?? ""),
+                        ("7d", account.weeklyRemaining, MenuBarGlyph.relativeReset(account.weeklyResetAt) ?? "")
                     ],
                     tooltip: ["\(account.title) · \(account.plan)", account.email, account.usageError].compactMap { $0 }.joined(separator: "\n"),
                     switchAction: canSwitch ? { [weak self] in self?.claude.switchAccount(account.id) } : nil
