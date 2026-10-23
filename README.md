@@ -64,9 +64,9 @@ Read the [full release notes](docs/release-notes/v3.0.md).
 
 ## Claude accounts (fork addition: AI Account Switcher)
 
-The **Claude** tab manages Claude Code subscription logins next to Codex.
+The **Accounts** tab lists Codex and Claude Code subscription logins in separate sections; Settings, the usage reminder and auto-switch cover both.
 
-- Each saved login shows its 5-hour and 7-day limits as bars; the menu bar shows Codex and Claude (`✳︎`) side by side.
+- Each saved login shows its 5-hour and 7-day limits as bars; the menu bar shows `[OpenAI] % | [Claude] %` with each logo.
 - **Switch** swaps the `Claude Code-credentials` Keychain item and `oauthAccount` in `~/.claude.json`, keeping other keys such as MCP OAuth tokens. New Claude Code sessions use the new account.
 - The token owner is checked with Anthropic before a login is saved, so a stale `~/.claude.json` cannot mix accounts.
 - **Add Claude Account** opens Terminal with `claude auth login`; the new login is saved automatically. Inactive logins refresh their own tokens.
@@ -115,7 +115,7 @@ You’ll need the Xcode command line tools.
 git clone https://github.com/lordydord/Codex-Account-Switcher.git
 cd Codex-Account-Switcher
 ./run-tests.sh      # infrastructure and reset-logic checks
-./build.sh          # builds build/Codex Account Switcher.app
+./build.sh          # builds build/AI Account Switcher.app
 ./install.sh        # copies it to /Applications
 ```
 

@@ -10,7 +10,7 @@ Rules for future work:
 - Keep switching based on account email queries, not padded numeric selectors such as `01` or `02`.
 - The app depends on `codex-auth`; do not vendor or copy private `~/.codex/accounts` data into the repository.
 - Build verification is `./build.sh`.
-- Install verification is `./install.sh`, then confirm the app runs from `/Applications/Codex Account Switcher.app`.
+- Install verification is `./install.sh`, then confirm the app runs from `/Applications/AI Account Switcher.app` (renamed in this fork; executable and bundle id unchanged).
 - Current app release is v3.0 / build 3000: a full macOS 27 Liquid Glass redesign (AccountPanelView.swift, glass components in PanelComponents.swift, PanelTheme in Models.swift), a performance pass (cached codex-auth path, signature-gated panel rebuilds, event-driven relaunch and process waits, ephemeral URLSession), and removal of the retired API mode and hidden legacy menu. It keeps transactional verified switching, rollback, best-account scoring, verified reset-credit redemption, the lifecycle monitor, privacy-safe diagnostics and the non-executing Route B prototype.
 - The GitHub Pages site in docs/ and the README artwork are generated from demo-mode captures (CODEX_ACCOUNT_SWITCHER_DEMO=1, CODEX_ACCOUNT_SWITCHER_DEMO_SCENARIO=two|four, CODEX_ACCOUNT_SWITCHER_APPEARANCE=dark|light).
 
@@ -26,7 +26,7 @@ Potential v2.5 idea:
 
 Claude fork notes:
 
-- Claude support lives in Sources/ClaudeAccounts.swift (store, Keychain via /usr/bin/security, usage, token refresh) and the `.claude` panel mode.
+- Claude support lives in Sources/ClaudeAccounts.swift (store, Keychain via /usr/bin/security, usage, token refresh) and the Claude section of the Accounts tab.
 - Keychain writes mirror Claude Code: `security -i` with hex on stdin when short, argv otherwise, always `-U`. Never delete-then-add the live item.
 - Only replace `claudeAiOauth` in the live item; keep every other key.
 - Never refresh the active profile's token; Claude Code owns it.

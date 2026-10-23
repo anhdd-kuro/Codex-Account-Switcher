@@ -172,7 +172,6 @@ enum AccountPanelMode {
 enum SettingsPanelAction: String {
     case usageView
     case addClaudeAccount
-    case removeClaudeAccount
     case settingsView
     case routeBView
     case resetCreditsView

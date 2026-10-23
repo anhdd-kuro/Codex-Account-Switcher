@@ -648,57 +648,6 @@ final class DotView: NSView {
     }
 }
 
-/// Two concentric Activity-style rings: outer = 5-hour window, inner = weekly.
-final class ActivityRingsView: NSView {
-    private let outerPercent: Int?
-    private let outerColor: NSColor
-    private let innerPercent: Int?
-    private let innerColor: NSColor
-    private let lineWidth: CGFloat
-
-    init(frame: NSRect, outerPercent: Int?, outerColor: NSColor, innerPercent: Int?, innerColor: NSColor, lineWidth: CGFloat = 9) {
-        self.outerPercent = outerPercent
-        self.outerColor = outerColor
-        self.innerPercent = innerPercent
-        self.innerColor = innerColor
-        self.lineWidth = lineWidth
-        super.init(frame: frame)
-        setAccessibilityElement(true)
-        setAccessibilityRole(.image)
-        let describe: (Int?) -> String = { $0.map { "\($0) percent left" } ?? "unknown" }
-        setAccessibilityLabel("5-hour \(describe(outerPercent)), weekly \(describe(innerPercent))")
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    override func draw(_ dirtyRect: NSRect) {
-        let center = NSPoint(x: bounds.midX, y: bounds.midY)
-        let outerRadius = min(bounds.width, bounds.height) / 2 - lineWidth / 2
-        let innerRadius = outerRadius - lineWidth - 2
-        drawRing(center: center, radius: outerRadius, percent: outerPercent, color: outerColor)
-        drawRing(center: center, radius: innerRadius, percent: innerPercent, color: innerColor)
-    }
-
-    private func drawRing(center: NSPoint, radius: CGFloat, percent: Int?, color: NSColor) {
-        let track = NSBezierPath()
-        track.appendArc(withCenter: center, radius: radius, startAngle: 0, endAngle: 360)
-        track.lineWidth = lineWidth
-        color.withAlphaComponent(0.20).setStroke()
-        track.stroke()
-
-        guard let percent, percent > 0 else { return }
-        let fraction = min(1, CGFloat(percent) / 100)
-        let arc = NSBezierPath()
-        arc.appendArc(withCenter: center, radius: radius, startAngle: 90, endAngle: 90 - 360 * fraction, clockwise: true)
-        arc.lineWidth = lineWidth
-        arc.lineCapStyle = .round
-        color.setStroke()
-        arc.stroke()
-    }
-}
-
 /// One usage window on a single line: label, bar, percent left and time to reset.
 final class UsageBarRowView: NSView {
     private let label: String
@@ -754,56 +703,6 @@ final class UsageBarRowView: NSView {
     }
 }
 
-/// Label, value and a thin bar — the compact usage meter used in account rows.
-final class MeterView: NSView {
-    private let title: String
-    private let value: String
-    private let percent: CGFloat?
-    private let color: NSColor
-    private let theme: PanelTheme
-
-    init(frame: NSRect, title: String, percent: Int?, color: NSColor, theme: PanelTheme) {
-        self.title = title
-        self.value = percent.map { "\(max(0, min(100, $0)))%" } ?? "--"
-        self.percent = percent.map { CGFloat(max(0, min(100, $0))) / 100 }
-        self.color = color
-        self.theme = theme
-        super.init(frame: frame)
-        setAccessibilityElement(true)
-        setAccessibilityRole(.staticText)
-        setAccessibilityLabel("\(title) \(value) left")
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    override var isFlipped: Bool { true }
-
-    override func draw(_ dirtyRect: NSRect) {
-        let titleAttributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 10.5, weight: .regular),
-            .foregroundColor: theme.secondaryText
-        ]
-        let valueAttributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.monospacedDigitSystemFont(ofSize: 10.5, weight: .semibold),
-            .foregroundColor: theme.primaryText
-        ]
-        (title as NSString).draw(at: NSPoint(x: 0, y: 0), withAttributes: titleAttributes)
-        let valueSize = (value as NSString).size(withAttributes: valueAttributes)
-        (value as NSString).draw(at: NSPoint(x: bounds.width - valueSize.width, y: 0), withAttributes: valueAttributes)
-
-        let bar = NSRect(x: 0, y: bounds.height - 4, width: bounds.width, height: 4)
-        theme.trackFill.setFill()
-        NSBezierPath(roundedRect: bar, xRadius: 2, yRadius: 2).fill()
-        if let percent, percent > 0 {
-            let fill = NSRect(x: bar.minX, y: bar.minY, width: max(4, bar.width * percent), height: bar.height)
-            color.setFill()
-            NSBezierPath(roundedRect: fill, xRadius: 2, yRadius: 2).fill()
-        }
-    }
-}
-
 /// A row of proportional coloured segments separated by small gaps.
 final class StackedBarView: NSView {
     private let segments: [(weight: CGFloat, color: NSColor)]
@@ -849,6 +748,8 @@ enum MenuBarGlyph {
         }
     }
 
+    static let claudeOrange = NSColor(srgbRed: 0xD9 / 255.0, green: 0x77 / 255.0, blue: 0x57 / 255.0, alpha: 1)
+
     struct UsagePart {
         let logo: String
         let text: String
@@ -863,7 +764,7 @@ enum MenuBarGlyph {
             if index > 0 {
                 title.append(NSAttributedString(string: compact ? "  |  " : "   |   ", attributes: [.font: font, .foregroundColor: separatorColor]))
             }
-            if let image = logo(part.logo, size: fontSize + 2, color: textColor) {
+            if let image = logo(part.logo, size: fontSize + 2, color: part.logo == "logo-claude" ? claudeOrange : textColor) {
                 let attachment = NSTextAttachment()
                 attachment.image = image
                 attachment.bounds = NSRect(x: 0, y: (font.capHeight - image.size.height) / 2, width: image.size.width, height: image.size.height)
@@ -873,31 +774,6 @@ enum MenuBarGlyph {
             title.append(NSAttributedString(string: part.text, attributes: [.font: font, .foregroundColor: part.isLow ? lowColor : textColor]))
         }
         return title
-    }
-
-    /// A small usage ring. The track uses the menu bar's own label colour, so it adapts to light and dark menu bars.
-    static func ring(percent: Int?, color: NSColor, diameter: CGFloat = 13, lineWidth: CGFloat = 2.2) -> NSImage {
-        let image = NSImage(size: NSSize(width: diameter, height: diameter), flipped: false) { rect in
-            let radius = (min(rect.width, rect.height) - lineWidth) / 2
-            let center = NSPoint(x: rect.midX, y: rect.midY)
-            let track = NSBezierPath()
-            track.appendArc(withCenter: center, radius: radius, startAngle: 0, endAngle: 360)
-            track.lineWidth = lineWidth
-            NSColor.labelColor.withAlphaComponent(0.28).setStroke()
-            track.stroke()
-            if let percent, percent > 0 {
-                let fraction = min(1, CGFloat(percent) / 100)
-                let arc = NSBezierPath()
-                arc.appendArc(withCenter: center, radius: radius, startAngle: 90, endAngle: 90 - 360 * fraction, clockwise: true)
-                arc.lineWidth = lineWidth
-                arc.lineCapStyle = .round
-                color.setStroke()
-                arc.stroke()
-            }
-            return true
-        }
-        image.isTemplate = false
-        return image
     }
 
     private static var spinnerCache: [String: NSImage] = [:]

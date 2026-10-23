@@ -276,6 +276,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
         configureNotifications()
         configureStatusButton()
+        claude.isEnabled = !demoMode
         claude.onChange = { [weak self] in
             self?.refreshUI()
             self?.checkClaudeAutomation()
@@ -847,8 +848,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             HealthStatus(title: "Update", value: updateHealthTitle, color: updateHealthColor),
             HealthStatus(
                 title: "Claude",
-                value: ClaudeAccountStore.claudeExecutable() == nil ? "No CLI" : (claude.active == nil ? "Signed out" : "OK"),
-                color: ClaudeAccountStore.claudeExecutable() == nil || claude.active == nil ? .systemRed : .systemGreen
+                value: ClaudeAccountStore.claudeExecutable() == nil ? "No CLI" : (claude.active.map { !$0.needsLogin } == true ? "OK" : "Signed out"),
+                color: ClaudeAccountStore.claudeExecutable() != nil && claude.active.map({ !$0.needsLogin }) == true ? .systemGreen : .systemRed
             ),
             HealthStatus(title: "Usage", value: claude.updatedText, color: claude.accounts.contains { $0.usageError != nil } ? .systemOrange : .systemGreen)
         ]
@@ -904,8 +905,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             claude.refreshIfNeeded(maximumAge: 30)
         case .addClaudeAccount:
             signInToClaude(email: nil)
-        case .removeClaudeAccount:
-            showRemoveClaudeAccountDialog()
         case .settingsView:
             accountPanelMode = .settings
         case .routeBView:
@@ -1486,13 +1485,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         return usageMode == .fiveHour ? account.fiveHourRemaining : account.weeklyRemaining
     }
 
-    private func claudeToolbarText(_ account: ClaudeAccountSummary) -> String {
-        let percent = claudeToolbarPercent(account)
-        return toolbarDisplayStyle == .compact
-            ? "✳︎\(remainingPercentNumberText(fromUsed: percent))"
-            : "✳︎ \(remainingPercentText(fromUsed: percent))"
-    }
-
     private func switchClaudeAccount(_ id: String) {
         guard !claude.isSwitching, let target = claude.accounts.first(where: { $0.id == id }) else { return }
         setResetStatus("Switching")
@@ -1554,11 +1546,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let mode = autoSwitchMode
         guard mode != .off else { return }
         let limit = mode == .zero ? 0 : autoSwitchThreshold
-        func level(_ account: ClaudeAccountSummary) -> Int { min(account.fiveHourRemaining ?? -1, account.weeklyRemaining ?? 100) }
-        guard level(active) <= limit,
+        func level(_ account: ClaudeAccountSummary) -> Int? {
+            guard account.usageError == nil, !account.needsLogin,
+                  let five = account.fiveHourRemaining, let weekly = account.weeklyRemaining else { return nil }
+            return min(five, weekly)
+        }
+        guard let activeLevel = level(active), activeLevel <= limit,
               let target = claude.accounts
-                .filter({ !$0.isActive && !$0.needsLogin && level($0) > limit })
-                .max(by: { level($0) < level($1) }) else { return }
+                .filter({ !$0.isActive && (level($0) ?? -1) > limit })
+                .max(by: { (level($0) ?? -1) < (level($1) ?? -1) }),
+              let targetLevel = level(target) else { return }
         let key = "switch|\(active.id)|\(target.id)|\(limit)|\(mode.rawValue)"
         guard notifiedClaudeKeys.insert(key).inserted else { return }
         if mode == .threshold {
@@ -1566,7 +1563,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         } else {
             sendNotification(
                 title: "Claude usage is low",
-                subtitle: "\(active.title) \(level(active))% -> \(target.title) \(level(target))%",
+                subtitle: "\(active.title) \(activeLevel)% -> \(target.title) \(targetLevel)%",
                 body: "Switch Claude Code to \(target.title)?",
                 categoryIdentifier: autoSwitchNotificationCategory,
                 userInfo: ["claudeProfileID": target.id]
@@ -1574,65 +1571,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
     }
 
-    private func showRemoveClaudeAccountDialog() {
-        let candidates = claude.accounts.filter { !$0.isActive }
-        guard !candidates.isEmpty else {
-            showAlert(title: "Remove Claude account", message: "Only the active Claude account is saved. Switch to another account first.")
-            return
-        }
-        let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 300, height: 26))
-        for account in candidates {
-            popup.addItem(withTitle: "\(account.title) · \(account.email)")
-            popup.lastItem?.representedObject = account.id
-        }
-        let alert = NSAlert()
-        alert.messageText = "Remove a Claude account?"
-        alert.informativeText = "Its saved login is deleted from the Keychain. You can sign in again later."
-        alert.accessoryView = popup
-        alert.addButton(withTitle: "Remove")
-        alert.addButton(withTitle: "Cancel")
-        NSApp.activate(ignoringOtherApps: true)
-        guard alert.runModal() == .alertFirstButtonReturn, let id = popup.selectedItem?.representedObject as? String else { return }
-        do {
-            try claude.remove(id)
-        } catch {
-            showAlert(title: "Remove Claude account", message: error.localizedDescription)
-        }
-    }
-
     private func statusTitleKey() -> String {
-        let claudeKey = claude.active.map { "\($0.id)|\(claudeToolbarText($0))" } ?? "-"
         if let resetStatusText {
             return "reset|\(resetStatusText)|\(statusSpinnerFrame.map { String($0 % 12) } ?? "-")|\(toolbarDisplayStyle.rawValue)"
         }
-        return toolbarStatusAccounts().map { account in
-            [
-                toolbarStatusText(for: account),
-                account.email,
-                account.isActive ? "active" : "inactive",
-                accountNeedsLogin(account) ? "login" : "ok",
-                "\(toolbarUsagePercent(for: account) ?? -1)",
-                usageMode.rawValue,
-                toolbarDisplayStyle.rawValue
-            ].joined(separator: "|")
-        }.joined(separator: "||") + "|||" + claudeKey
+        return menuBarUsageParts().map { "\($0.part.logo)|\($0.part.text)|\($0.part.isLow)" }.joined(separator: "||") + "|\(toolbarDisplayStyle.rawValue)"
     }
 
     private func setResetStatus(_ text: String?) {
         resetStatusText = text
         currentStatusTitleKey = ""
         updateStatusTitle()
-    }
-
-    private func toolbarStatusText(for account: CodexAccount) -> String {
-        let label = toolbarLabel(for: account)
-        let percent = toolbarUsagePercent(for: account)
-        switch toolbarDisplayStyle {
-        case .detailed:
-            return "\(label) \(remainingPercentText(fromUsed: percent))"
-        case .compact:
-            return "\(label)\(remainingPercentNumberText(fromUsed: percent))"
-        }
     }
 
     private func toolbarUsagePercent(for account: CodexAccount) -> Int? {
@@ -1712,11 +1661,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private func remainingPercentText(fromUsed used: Int?) -> String {
         guard let used else { return "--%" }
         return "\(max(0, min(100, used)))%"
-    }
-
-    private func remainingPercentNumberText(fromUsed used: Int?) -> String {
-        guard let used else { return "--" }
-        return "\(max(0, min(100, used)))"
     }
 
 

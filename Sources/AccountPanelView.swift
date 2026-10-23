@@ -324,7 +324,6 @@ final class AccountSwitcherPanelView: NSView {
         add("Rename Accounts…", .editLabels)
         menu.addItem(.separator())
         add("Add Claude Account…", .addClaudeAccount)
-        add("Remove Claude Account…", .removeClaudeAccount)
         menu.addItem(.separator())
         add("Refresh Rate…", .editRefresh)
         add("Check for Updates…", .checkUpdates)
@@ -593,15 +592,6 @@ final class AccountSwitcherPanelView: NSView {
             self?.performSettingsAction(.addDeviceAccount)
         }
         tile.place(device, x: 12 + add.frame.width + 8, y: 108)
-        return tile
-    }
-
-    private func noticeTile(title: String, detail: String, tone: PanelTheme.Tone, theme: PanelTheme, y: CGFloat) -> NSView {
-        let tile = TileView(frame: NSRect(x: inset, y: y, width: contentWidth, height: 60), fill: theme.tint(tone), border: theme.color(tone).withAlphaComponent(0.35))
-        tile.place(makeLabel(title, size: 13, weight: .semibold, color: theme.text(tone)), x: 12, y: 11, width: contentWidth - 24)
-        let detailLabel = makeLabel(detail, size: 11, color: theme.secondaryText)
-        detailLabel.toolTip = detail
-        tile.place(detailLabel, x: 12, y: 31, width: contentWidth - 24)
         return tile
     }
 

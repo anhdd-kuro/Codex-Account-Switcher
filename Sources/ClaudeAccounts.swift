@@ -108,6 +108,15 @@ enum ClaudeKeychain {
         return value.isEmpty ? nil : value
     }
 
+    /// Like `read`, but only a missing item yields nil; any other failure throws.
+    static func readStrict(_ service: String) throws -> String? {
+        let result = ProcessRunner.run(security, ["find-generic-password", "-s", service, "-w"], environment: [:], timeout: 5)
+        if result.status == 44 { return nil }
+        guard result.status == 0 else { throw ClaudeError.message("Keychain read failed for \(service); nothing was changed.") }
+        let value = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
+    }
+
     static func accountAttribute(_ service: String) -> String? {
         let result = ProcessRunner.run(security, ["find-generic-password", "-s", service], environment: [:], timeout: 5)
         guard result.status == 0 else { return nil }
@@ -225,7 +234,8 @@ enum ClaudeAccountStore {
 
     private static func writeOAuthAccount(_ account: [String: Any]?) throws {
         var object: [String: Any] = [:]
-        if let data = try? Data(contentsOf: claudeStateURL) {
+        if FileManager.default.fileExists(atPath: claudeStateURL.path) {
+            let data = try Data(contentsOf: claudeStateURL)
             guard let parsed = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
                 throw ClaudeError.message("Cannot read ~/.claude.json")
             }
@@ -268,15 +278,18 @@ enum ClaudeAccountStore {
     }
 
     /// Mirrors the live login into its profile backup (Claude Code rotates tokens) and
-    /// saves a login that no profile knows yet. Returns the profiles and the live id.
-    static func synchronize() -> (profiles: [ClaudeProfile], activeID: String?) {
+    /// saves a login that no profile knows yet. `activeID` is nil when the live owner
+    /// is unconfirmed; `preserved` is false when the live login is not safely saved.
+    static func synchronize() -> (profiles: [ClaudeProfile], activeID: String?, preserved: Bool) {
         lock.lock(); defer { lock.unlock() }
         var profiles = loadProfiles()
-        guard let liveText = ClaudeKeychain.read(liveService),
-              let liveOAuth = oauth(parseCredentials(liveText)),
+        let liveText: String?
+        do { liveText = try ClaudeKeychain.readStrict(liveService) } catch { return (profiles, nil, false) }
+        guard let liveText else { return (profiles, nil, true) }
+        guard let liveOAuth = oauth(parseCredentials(liveText)),
               let oauthAccount = readOAuthAccount(),
               let email = oauthAccount["emailAddress"] as? String, !email.isEmpty else {
-            return (profiles, nil)
+            return (profiles, nil, false)
         }
         let organizationID = oauthAccount["organizationUuid"] as? String ?? ""
         let id = ClaudeProfile.identity(email: email, organizationID: organizationID)
@@ -287,20 +300,20 @@ enum ClaudeAccountStore {
         }
         let known = profiles.first(where: { $0.id == id })
         if let known, backupMatchesLive(known) {
-            return (profiles, id)
+            return (profiles, id, true)
         }
         // New tokens: a running Claude Code session can leave ~/.claude.json naming a
         // different account, so confirm whose token this is before saving it anywhere.
         guard let token = liveOAuth["accessToken"] as? String, let ownerID = tokenOwner(token) else {
-            return (profiles, known?.id)
+            return (profiles, nil, false)
         }
         if ownerID != id {
             guard let owner = profiles.first(where: { $0.id == ownerID }),
-                  let text = try? serialize(["claudeAiOauth": liveOAuth]) else {
-                return (profiles, nil)
+                  let text = try? serialize(["claudeAiOauth": liveOAuth]),
+                  (try? ClaudeKeychain.write(owner.keychainService, account: owner.keychainAccount, secret: text)) != nil else {
+                return (profiles, nil, false)
             }
-            try? ClaudeKeychain.write(owner.keychainService, account: owner.keychainAccount, secret: text)
-            return (profiles, ownerID)
+            return (profiles, ownerID, true)
         }
         var profile: ClaudeProfile
         if let index = profiles.firstIndex(where: { $0.id == id }) {
@@ -318,11 +331,12 @@ enum ClaudeAccountStore {
             )
             profiles.append(profile)
         }
-        if let text = try? serialize(["claudeAiOauth": liveOAuth]) {
-            try? ClaudeKeychain.write(profile.keychainService, account: profile.keychainAccount, secret: text)
+        guard let text = try? serialize(["claudeAiOauth": liveOAuth]),
+              (try? ClaudeKeychain.write(profile.keychainService, account: profile.keychainAccount, secret: text)) != nil,
+              (try? saveProfiles(profiles)) != nil else {
+            return (profiles, id, false)
         }
-        try? saveProfiles(profiles)
-        return (profiles, id)
+        return (profiles, id, true)
     }
 
     /// The account and organization an access token belongs to, from Anthropic.
@@ -355,38 +369,53 @@ enum ClaudeAccountStore {
 
     static func switchTo(profileID: String) throws {
         lock.lock(); defer { lock.unlock() }
-        let (profiles, activeID) = synchronize()
+        let (profiles, activeID, preserved) = synchronize()
+        guard preserved else {
+            throw ClaudeError.message("The current Claude login could not be saved first, so nothing was changed. Try again shortly.")
+        }
         guard let target = profiles.first(where: { $0.id == profileID }) else {
             throw ClaudeError.message("Claude profile not found")
         }
         guard activeID != profileID else { return }
-        guard let targetOAuth = oauth(parseCredentials(ClaudeKeychain.read(target.keychainService))) else {
+        guard let targetOAuth = oauth(parseCredentials(ClaudeKeychain.read(target.keychainService))),
+              !(targetOAuth["accessToken"] as? String ?? "").isEmpty,
+              !(targetOAuth["refreshToken"] as? String ?? "").isEmpty else {
             throw ClaudeError.message("Saved credentials for \(target.title) are missing. Sign in to it again.")
         }
         guard !target.oauthAccount.isEmpty else {
             throw ClaudeError.message("Saved account details for \(target.title) are missing. Sign in to it again.")
         }
 
-        let liveText = ClaudeKeychain.read(liveService)
-        let liveAccount = ClaudeKeychain.accountAttribute(liveService)
+        let liveText = try ClaudeKeychain.readStrict(liveService)
+        var credentials: [String: Any] = [:]
+        if let liveText {
+            guard let parsed = parseCredentials(liveText) else {
+                throw ClaudeError.message("The current Claude credentials are unreadable, so nothing was changed.")
+            }
+            credentials = parsed
+        }
+        let liveAccount = ClaudeKeychain.accountAttribute(liveService) ?? target.keychainAccount
         let liveOAuthAccount = readOAuthAccount()
-        var credentials = parseCredentials(liveText) ?? [:]
         credentials["claudeAiOauth"] = targetOAuth
         do {
-            try ClaudeKeychain.write(liveService, account: liveAccount ?? target.keychainAccount, secret: try serialize(credentials))
+            try ClaudeKeychain.write(liveService, account: liveAccount, secret: try serialize(credentials))
             try writeOAuthAccount(target.oauthAccount)
-            guard oauth(parseCredentials(ClaudeKeychain.read(liveService)))?["accessToken"] as? String == targetOAuth["accessToken"] as? String,
+            guard (oauth(parseCredentials(ClaudeKeychain.read(liveService))) as NSDictionary?)?.isEqual(to: targetOAuth) == true,
                   liveIdentity() == target.id else {
-                throw ClaudeError.message("Claude login did not change. The previous login was restored.")
+                throw ClaudeError.message("Claude login did not change.")
             }
         } catch {
+            var restored = true
             if let liveText {
-                try? ClaudeKeychain.write(liveService, account: liveAccount ?? target.keychainAccount, secret: liveText)
+                restored = (try? ClaudeKeychain.write(liveService, account: liveAccount, secret: liveText)) != nil
             } else {
                 ClaudeKeychain.delete(liveService)
+                do { restored = try ClaudeKeychain.readStrict(liveService) == nil } catch { restored = false }
             }
-            try? writeOAuthAccount(liveOAuthAccount)
-            throw error
+            restored = (try? writeOAuthAccount(liveOAuthAccount)) != nil && restored
+            throw ClaudeError.message(restored
+                ? "\(error.localizedDescription) The previous login was restored."
+                : "\(error.localizedDescription) The previous login could not be fully restored; run `claude auth login` to recover.")
         }
     }
 
@@ -407,9 +436,12 @@ enum ClaudeAccountStore {
     // MARK: - Usage
 
     static func summaries(_ profiles: [ClaudeProfile], activeID: String?) async -> [ClaudeAccountSummary] {
-        await withTaskGroup(of: (Int, ClaudeAccountSummary).self) { group in
+        // Claude Code owns the live token: never refresh it, and refresh nothing while
+        // the live owner is unconfirmed.
+        let liveRefreshToken = oauth(parseCredentials(ClaudeKeychain.read(liveService)))?["refreshToken"] as? String
+        return await withTaskGroup(of: (Int, ClaudeAccountSummary).self) { group in
             for (index, profile) in profiles.enumerated() {
-                group.addTask { (index, await summary(for: profile, isActive: profile.id == activeID)) }
+                group.addTask { (index, await summary(for: profile, isActive: profile.id == activeID, mayRefresh: activeID != nil, liveRefreshToken: liveRefreshToken)) }
             }
             var results: [(Int, ClaudeAccountSummary)] = []
             for await result in group { results.append(result) }
@@ -417,14 +449,15 @@ enum ClaudeAccountStore {
         }
     }
 
-    private static func summary(for profile: ClaudeProfile, isActive: Bool) async -> ClaudeAccountSummary {
+    private static func summary(for profile: ClaudeProfile, isActive: Bool, mayRefresh: Bool, liveRefreshToken: String?) async -> ClaudeAccountSummary {
         let service = isActive ? liveService : profile.keychainService
         var credentials = oauth(parseCredentials(ClaudeKeychain.read(service)))
+        let canRefresh = !isActive && mayRefresh && credentials?["refreshToken"] as? String != liveRefreshToken
         var needsLogin = credentials == nil
         var usage: [String: Any]?
         var error: String? = credentials == nil ? "No saved login" : nil
 
-        if !isActive, let current = credentials, isExpired(current) {
+        if canRefresh, let current = credentials, isExpired(current) {
             switch await refreshed(current, profile: profile) {
             case .success(let updated): credentials = updated
             case .failure(let failure):
@@ -434,7 +467,7 @@ enum ClaudeAccountStore {
         }
         if let token = credentials?["accessToken"] as? String, !needsLogin {
             var result = await fetchUsage(token: token)
-            if case .failure(let failure) = result, failure.status == 401, !isActive, let current = credentials {
+            if case .failure(let failure) = result, failure.status == 401, canRefresh, let current = credentials {
                 switch await refreshed(current, profile: profile) {
                 case .success(let updated):
                     if let newToken = updated["accessToken"] as? String { result = await fetchUsage(token: newToken) }
@@ -456,7 +489,7 @@ enum ClaudeAccountStore {
             guard let window = usage?[key] as? [String: Any],
                   let utilization = (window["utilization"] as? NSNumber)?.doubleValue,
                   utilization.isFinite else {
-                return (usage == nil ? nil : 100, nil)
+                return (nil, nil)
             }
             let remaining = max(0, min(100, Int((100 - utilization).rounded())))
             return (remaining, (window["resets_at"] as? String).flatMap(parseDate))
@@ -590,7 +623,9 @@ enum ClaudeAccountStore {
 
     /// Opens Terminal with `claude auth login`; the next refresh saves the new login.
     static func openLoginTerminal(email: String?) throws {
-        _ = synchronize()
+        guard synchronize().preserved else {
+            throw ClaudeError.message("The current Claude login could not be saved first. Try again shortly.")
+        }
         guard let claude = claudeExecutable() else {
             throw ClaudeError.message("Claude Code CLI was not found. Install it from claude.com/claude-code.")
         }
@@ -628,8 +663,10 @@ final class ClaudeController {
     private var isRefreshing = false
     private var pendingRefresh = false
     private var lastRefreshStartedAt: Date?
+    private var pendingSwitch: (id: String, completion: (String?) -> Void)?
     private let refreshInterval: TimeInterval = 90
     var onChange: (() -> Void)?
+    var isEnabled = true
 
     var active: ClaudeAccountSummary? { accounts.first(where: \.isActive) }
 
@@ -648,7 +685,7 @@ final class ClaudeController {
     }
 
     func refresh() {
-        guard !isSwitching else { return }
+        guard isEnabled, !isSwitching else { return }
         guard !isRefreshing else {
             pendingRefresh = true
             return
@@ -656,7 +693,7 @@ final class ClaudeController {
         isRefreshing = true
         lastRefreshStartedAt = Date()
         Task.detached(priority: .utility) {
-            let (profiles, activeID) = ClaudeAccountStore.synchronize()
+            let (profiles, activeID, _) = ClaudeAccountStore.synchronize()
             let summaries = await ClaudeAccountStore.summaries(profiles, activeID: activeID)
             await MainActor.run { self.apply(summaries) }
         }
@@ -676,8 +713,17 @@ final class ClaudeController {
             )
         }
         lastError = ClaudeAccountStore.claudeExecutable() == nil && accounts.isEmpty ? "Claude Code CLI not found" : nil
-        lastUpdatedAt = Date()
+        if summaries.contains(where: { $0.usageError == nil && !$0.needsLogin }) {
+            lastUpdatedAt = Date()
+        }
         isRefreshing = false
+        // Start a queued switch before onChange, which may run auto-switch.
+        if let pendingSwitch {
+            self.pendingSwitch = nil
+            pendingRefresh = false
+            switchTo(pendingSwitch.id, completion: pendingSwitch.completion)
+            return
+        }
         onChange?()
         if pendingRefresh {
             pendingRefresh = false
@@ -685,8 +731,14 @@ final class ClaudeController {
         }
     }
 
+    /// Waits for an in-flight refresh: it may be rotating the target's token.
     func switchTo(_ id: String, completion: @escaping (String?) -> Void) {
-        guard !isSwitching else { return }
+        guard isEnabled else { return completion("Claude switching is disabled in demo mode.") }
+        guard !isSwitching, pendingSwitch == nil else { return completion("Another Claude switch is already in progress.") }
+        guard !isRefreshing else {
+            pendingSwitch = (id, completion)
+            return
+        }
         isSwitching = true
         onChange?()
         Task.detached(priority: .userInitiated) {
@@ -724,6 +776,10 @@ final class ClaudeController {
     }
 
     func signIn(email: String?, completion: @escaping (String?) -> Void) {
+        guard isEnabled else {
+            completion("Claude sign-in is disabled in demo mode.")
+            return
+        }
         Task.detached(priority: .userInitiated) {
             let failure: String?
             do {
