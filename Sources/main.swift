@@ -1483,7 +1483,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
         if let account = claude.active {
             let percent = claudeToolbarPercent(account)
-            let reset = account.needsLogin ? nil : MenuBarGlyph.relativeReset(claudeUsageMode == .fiveHour ? account.fiveHourResetAt : account.weeklyResetAt)
+            let reset = account.needsLogin ? nil : MenuBarGlyph.relativeReset(claudeUsageMode == .fiveHour && account.hasFiveHourLimit ? account.fiveHourResetAt : account.weeklyResetAt)
             parts.append((.init(logo: "logo-claude", text: account.needsLogin ? "Sign in" : remainingPercentText(fromUsed: percent), isLow: account.needsLogin || (percent ?? 100) < 10, reset: reset), "Claude \(account.title) \(remainingPercentText(fromUsed: percent)) left"))
         }
         return parts
@@ -1498,7 +1498,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     private func claudeToolbarPercent(_ account: ClaudeAccountSummary) -> Int? {
         if account.needsLogin { return 0 }
-        return claudeUsageMode == .fiveHour ? account.fiveHourRemaining : account.weeklyRemaining
+        return claudeUsageMode == .fiveHour && account.hasFiveHourLimit ? account.fiveHourRemaining : account.weeklyRemaining
     }
 
     private func switchClaudeAccount(_ id: String) {

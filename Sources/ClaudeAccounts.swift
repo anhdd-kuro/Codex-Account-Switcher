@@ -12,6 +12,9 @@ struct ClaudeAccountSummary: Equatable {
     let isActive: Bool
     let needsLogin: Bool
     let usageError: String?
+
+    /// Team premium seats ("Claude Team 5x") only have a weekly limit; their 5-hour window is a placeholder.
+    var hasFiveHourLimit: Bool { !(plan.hasPrefix("Claude Team") && plan.range(of: #"\d+x$"#, options: .regularExpression) != nil) }
 }
 
 struct ClaudeProfile {

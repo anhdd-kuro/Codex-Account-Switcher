@@ -513,6 +513,7 @@ final class AccountSwitcherPanelView: NSView {
             action: card.switchAction
         )
         tile.toolTip = card.tooltip
+        tile.alphaValue = card.isActive ? 1 : 0.9
 
         let tone: PanelTheme.Tone = card.needsLogin ? .red : card.isActive ? .green : .neutral
         tile.addSubview(MonogramView(
@@ -1297,8 +1298,9 @@ extension AccountSwitcherPanelView {
                     isActive: account.isActive,
                     needsLogin: account.needsLogin,
                     isBest: account.id == bestID,
-                    windows: [
-                        ("5h", account.fiveHourRemaining, MenuBarGlyph.relativeReset(account.fiveHourResetAt) ?? ""),
+                    windows: (account.hasFiveHourLimit ? [
+                        ("5h", account.fiveHourRemaining, MenuBarGlyph.relativeReset(account.fiveHourResetAt) ?? "")
+                    ] : []) + [
                         ("7d", account.weeklyRemaining, MenuBarGlyph.relativeReset(account.weeklyResetAt) ?? "")
                     ],
                     tooltip: ["\(account.title) · \(account.plan)", account.email, account.usageError].compactMap { $0 }.joined(separator: "\n"),
