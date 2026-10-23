@@ -263,10 +263,10 @@ struct PanelTheme {
     static var glassOpacity: CGFloat {
         get {
             guard UserDefaults.standard.object(forKey: glassOpacityKey) != nil else { return 0.8 }
-            return CGFloat(min(1, max(0.3, UserDefaults.standard.double(forKey: glassOpacityKey))))
+            return CGFloat(min(1, max(0.1, UserDefaults.standard.double(forKey: glassOpacityKey))))
         }
         set {
-            UserDefaults.standard.set(Double(min(1, max(0.3, newValue))), forKey: glassOpacityKey)
+            UserDefaults.standard.set(Double(min(1, max(0.1, newValue))), forKey: glassOpacityKey)
             NotificationCenter.default.post(name: glassOpacityDidChange, object: nil)
         }
     }

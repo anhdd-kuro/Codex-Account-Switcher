@@ -86,7 +86,7 @@ final class GlassPanelBackground: NSView {
         surface.wantsLayer = true
         let blur = NSVisualEffectView(frame: bounds)
         blur.autoresizingMask = [.width, .height]
-        blur.material = .underWindowBackground
+        blur.material = .hudWindow
         blur.blendingMode = .behindWindow
         blur.state = .active
         blur.appearance = NSAppearance(named: theme.isDark ? .darkAqua : .aqua)

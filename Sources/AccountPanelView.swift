@@ -946,7 +946,7 @@ final class AccountSwitcherPanelView: NSView {
     private func glassOpacityRow(theme: PanelTheme) -> SettingsRow {
         SettingsRow(height: 50) { row, width in
             let percent = makeLabel("\(Int((PanelTheme.glassOpacity * 100).rounded()))%", size: 11.5, color: theme.secondaryText, alignment: .right, monospacedDigits: true)
-            let slider = ClosureSlider(frame: NSRect(x: 0, y: 0, width: 120, height: 20), value: Double(PanelTheme.glassOpacity), range: 0.3...1, theme: theme) { value in
+            let slider = ClosureSlider(frame: NSRect(x: 0, y: 0, width: 120, height: 20), value: Double(PanelTheme.glassOpacity), range: 0.1...1, theme: theme) { value in
                 PanelTheme.glassOpacity = CGFloat(value)
                 percent.stringValue = "\(Int((value * 100).rounded()))%"
             }
