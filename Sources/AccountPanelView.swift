@@ -408,7 +408,7 @@ final class AccountSwitcherPanelView: NSView {
 
     private func sectionHeader(_ title: String, logo: String, addLabel: String, add: @escaping () -> Void, into body: NSView, y: CGFloat, theme: PanelTheme) -> CGFloat {
         let height: CGFloat = 24
-        if let image = MenuBarGlyph.logo(logo, size: 13, color: theme.secondaryText) {
+        if let image = MenuBarGlyph.logo(logo, size: 13, color: logo == "logo-claude" ? MenuBarGlyph.claudeOrange : (theme.isDark ? .white : theme.primaryText)) {
             let view = NSImageView(frame: NSRect(x: inset + 4, y: y + (height - 13) / 2, width: 13, height: 13))
             view.image = image
             body.addSubview(view)
