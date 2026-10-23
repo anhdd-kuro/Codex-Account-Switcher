@@ -256,13 +256,13 @@ struct PanelTheme {
     var tertiaryText: NSColor { isDark ? Self.rgb(0x888888, 0.72) : Self.rgb(0x393A34, 0.45) }
 
     // Surface
-    var panelTint: NSColor { isDark ? Self.rgb(0x121212) : Self.rgb(0xFFFFFF) }
+    var panelTint: NSColor { isDark ? Self.rgb(0x0E0E0E) : Self.rgb(0xFFFFFF) }
     var panelEdge: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.10) : Self.rgb(0x000000, 0.12) }
     var panelHighlight: NSColor { isDark ? NSColor.white : NSColor.white }
 
     // Tiles, hairlines and controls
-    var tileFill: NSColor { isDark ? Self.rgb(0x1E1E1E) : Self.rgb(0xF7F7F7) }
-    var tileHoverFill: NSColor { isDark ? Self.rgb(0x262626) : Self.rgb(0xEEEEEE) }
+    var tileFill: NSColor { isDark ? Self.rgb(0x121212) : Self.rgb(0xF7F7F7) }
+    var tileHoverFill: NSColor { isDark ? Self.rgb(0x171717) : Self.rgb(0xEEEEEE) }
     var tileBorder: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.06) : Self.rgb(0x000000, 0.06) }
     var hairline: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.08) : Self.rgb(0x000000, 0.08) }
     var controlFill: NSColor { isDark ? Self.rgb(0x262626) : Self.rgb(0xEEEEEE) }
