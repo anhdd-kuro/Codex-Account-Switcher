@@ -59,11 +59,9 @@ extension NSView {
     }
 }
 
-// MARK: - Glass panel
+// MARK: - Panel surface
 
-/// The panel's Liquid Glass surface. On macOS 26 and later this is a real
-/// NSGlassEffectView (which honours the system transparency setting); older
-/// systems fall back to a popover material with a drawn edge.
+/// The panel's flat, opaque Vitesse surface with a hairline edge.
 final class GlassPanelBackground: NSView {
     let contentView: FlippedContainerView
 
@@ -74,37 +72,17 @@ final class GlassPanelBackground: NSView {
         autoresizingMask = [.width, .height]
         wantsLayer = true
 
-        if #available(macOS 26.0, *) {
-            let glass = NSGlassEffectView(frame: bounds)
-            glass.autoresizingMask = [.width, .height]
-            glass.cornerRadius = cornerRadius
-            glass.style = .regular
-            glass.tintColor = theme.panelTint
-            glass.contentView = contentView
-            addSubview(glass)
-        } else {
-            let material = NSVisualEffectView(frame: bounds)
-            material.autoresizingMask = [.width, .height]
-            material.material = .popover
-            material.blendingMode = .behindWindow
-            material.state = .active
-            material.wantsLayer = true
-            material.layer?.cornerRadius = cornerRadius
-            material.layer?.cornerCurve = .continuous
-            material.layer?.masksToBounds = true
-            addSubview(material)
-
-            let tint = NSView(frame: bounds)
-            tint.autoresizingMask = [.width, .height]
-            tint.wantsLayer = true
-            tint.layer?.backgroundColor = theme.panelTint.cgColor
-            material.addSubview(tint)
-            material.addSubview(contentView)
-
-            let edge = PanelEdgeView(frame: bounds, theme: theme, cornerRadius: cornerRadius)
-            edge.autoresizingMask = [.width, .height]
-            addSubview(edge)
-        }
+        let surface = NSView(frame: bounds)
+        surface.autoresizingMask = [.width, .height]
+        surface.wantsLayer = true
+        surface.layer?.backgroundColor = theme.panelTint.cgColor
+        surface.layer?.cornerRadius = cornerRadius
+        surface.layer?.cornerCurve = .continuous
+        surface.layer?.borderWidth = 1
+        surface.layer?.borderColor = theme.panelEdge.cgColor
+        surface.layer?.masksToBounds = true
+        surface.addSubview(contentView)
+        addSubview(surface)
     }
 
     required init?(coder: NSCoder) {
@@ -718,6 +696,61 @@ final class ActivityRingsView: NSView {
         arc.lineCapStyle = .round
         color.setStroke()
         arc.stroke()
+    }
+}
+
+/// One usage window on a single line: label, bar, percent left and time to reset.
+final class UsageBarRowView: NSView {
+    private let label: String
+    private let percent: Int?
+    private let reset: String
+    private let color: NSColor
+    private let theme: PanelTheme
+
+    init(frame: NSRect, label: String, percent: Int?, reset: String, color: NSColor, theme: PanelTheme) {
+        self.label = label
+        self.percent = percent.map { max(0, min(100, $0)) }
+        self.reset = reset
+        self.color = color
+        self.theme = theme
+        super.init(frame: frame)
+        setAccessibilityElement(true)
+        setAccessibilityRole(.staticText)
+        setAccessibilityLabel("\(label) \(self.percent.map { "\($0)%" } ?? "unknown") left, resets in \(reset)")
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override var isFlipped: Bool { true }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let font = NSFont.monospacedDigitSystemFont(ofSize: 11.5, weight: .regular)
+        let labelAttributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: theme.secondaryText]
+        let valueAttributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: theme.primaryText]
+        let resetAttributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: theme.tertiaryText]
+        let textY = (bounds.height - font.boundingRectForFont.height) / 2 + 1
+        let labelWidth: CGFloat = 26
+        let resetWidth: CGFloat = 34
+        let valueWidth: CGFloat = 40
+
+        (label as NSString).draw(at: NSPoint(x: 0, y: textY), withAttributes: labelAttributes)
+        let resetSize = (reset as NSString).size(withAttributes: resetAttributes)
+        (reset as NSString).draw(at: NSPoint(x: bounds.width - resetSize.width, y: textY), withAttributes: resetAttributes)
+        let value = percent.map { "\($0)%" } ?? "--"
+        let valueSize = (value as NSString).size(withAttributes: valueAttributes)
+        (value as NSString).draw(at: NSPoint(x: bounds.width - resetWidth - valueSize.width, y: textY), withAttributes: valueAttributes)
+
+        let barX = labelWidth + 4
+        let bar = NSRect(x: barX, y: (bounds.height - 6) / 2, width: bounds.width - barX - resetWidth - valueWidth - 8, height: 6)
+        theme.trackFill.setFill()
+        NSBezierPath(roundedRect: bar, xRadius: 3, yRadius: 3).fill()
+        if let percent, percent > 0 {
+            let fill = NSRect(x: bar.minX, y: bar.minY, width: max(6, bar.width * CGFloat(percent) / 100), height: bar.height)
+            color.setFill()
+            NSBezierPath(roundedRect: fill, xRadius: 3, yRadius: 3).fill()
+        }
     }
 }
 

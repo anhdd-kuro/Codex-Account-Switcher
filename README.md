@@ -62,6 +62,16 @@ A ground-up redesign for macOS 27, and a much lighter app underneath.
 
 Read the [full release notes](docs/release-notes/v3.0.md).
 
+## Claude accounts (fork addition)
+
+The **Claude** tab manages Claude Code subscription logins next to Codex.
+
+- Each saved login shows its 5-hour and 7-day limits as bars; the menu bar shows Codex and Claude (`✳︎`) side by side.
+- **Switch** swaps the `Claude Code-credentials` Keychain item and `oauthAccount` in `~/.claude.json`, keeping other keys such as MCP OAuth tokens. New Claude Code sessions use the new account.
+- The token owner is checked with Anthropic before a login is saved, so a stale `~/.claude.json` cannot mix accounts.
+- **Add Claude Account** opens Terminal with `claude auth login`; the new login is saved automatically. Inactive logins refresh their own tokens.
+- Profiles from the earlier Python `claude-switcher` are imported on first launch.
+
 ## Install
 
 1. Download the latest version from [Releases](https://github.com/lordydord/Codex-Account-Switcher/releases/latest), unzip it and move **Codex Account Switcher** to Applications.

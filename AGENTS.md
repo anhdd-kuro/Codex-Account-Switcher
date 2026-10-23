@@ -23,3 +23,10 @@ Potential v2.5 idea:
 - Keep native Codex as the fallback and default for public, irreversible, account-sensitive, or upload/send tasks such as Traxsource, Kit, Prime, SoundCloud, Bandcamp, invoices, and account switching.
 - Keep all provider keys, local routing files, account emails, and actual auth state out of the public repository.
 - The minimal prototype now implements profile selection only. It stores a public profile ID in `UserDefaults`; provider execution, key entry, and tool enablement remain disabled.
+
+Claude fork notes:
+
+- Claude support lives in Sources/ClaudeAccounts.swift (store, Keychain via /usr/bin/security, usage, token refresh) and the `.claude` panel mode.
+- Keychain writes mirror Claude Code: `security -i` with hex on stdin when short, argv otherwise, always `-U`. Never delete-then-add the live item.
+- Only replace `claudeAiOauth` in the live item; keep every other key.
+- Never refresh the active profile's token; Claude Code owns it.

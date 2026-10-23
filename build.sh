@@ -36,6 +36,7 @@ CLANG_MODULE_CACHE_PATH="$MODULE_CACHE_DIR" swiftc "$LIFECYCLE_MONITOR_SOURCE" \
 CLANG_MODULE_CACHE_PATH="$MODULE_CACHE_DIR" swiftc \
   "$ROOT_DIR/Sources/AppInfrastructure.swift" \
   "$ROOT_DIR/Sources/Models.swift" \
+  "$ROOT_DIR/Sources/ClaudeAccounts.swift" \
   "$ROOT_DIR/Sources/PanelComponents.swift" \
   "$ROOT_DIR/Sources/AccountPanelView.swift" \
   "$ROOT_DIR/Sources/main.swift" \

@@ -92,6 +92,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var updateHealthTitle = "Check"
     private var updateHealthColor = NSColor.systemOrange
     private var resetCreditsByEmail: [String: ResetCreditsSnapshot] = [:]
+    private let claude = ClaudeController()
+    private let providerTabDefaultsKey = "lastProviderTab"
     private var remindersEnabled: Bool {
         get {
             if UserDefaults.standard.object(forKey: remindersEnabledDefaultsKey) == nil {
@@ -274,6 +276,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
         configureNotifications()
         configureStatusButton()
+        claude.onChange = { [weak self] in self?.refreshUI() }
+        claude.refresh()
         refreshAccounts(force: true)
         if showPanelOnLaunch {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
@@ -295,6 +299,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
         let timer = Timer(timeInterval: timerTickInterval, repeats: true) { [weak self] _ in
             self?.refreshAccountsIfNeeded()
+            self?.claude.refreshIfNeeded()
         }
         timer.tolerance = 1
         RunLoop.current.add(timer, forMode: .common)
@@ -555,7 +560,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     private func refreshUI() {
         if !isSwitching {
-            if accounts.contains(where: { $0.isActive }) {
+            if accounts.contains(where: { $0.isActive }) || claude.active != nil {
                 updateStatusTitle()
             } else {
                 clearStatusTitle()
@@ -592,7 +597,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     private func showAccountPanel() {
-        accountPanelMode = .usage
+        let preferClaude = UserDefaults.standard.string(forKey: providerTabDefaultsKey) == "claude"
+            || (accounts.isEmpty && !claude.accounts.isEmpty)
+        accountPanelMode = preferClaude ? .claude : .usage
+        claude.refreshIfNeeded(maximumAge: 30)
         let panel = accountPanel ?? makeAccountPanel()
         accountPanel = panel
         refreshAccountPanelContent(force: true)
@@ -678,7 +686,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             UserDefaults.standard.string(forKey: selectedRouteBProfileDefaultsKey) ?? "",
             accountLabels().sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: ","),
             health,
-            resets
+            resets,
+            String(describing: claude.accounts),
+            "\(claude.isSwitching)|\(claude.lastError ?? "")|\(claude.updatedText)"
         ].joined(separator: "\u{1E}")
     }
 
@@ -721,7 +731,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 self?.confirmLogoutAccount(email)
             },
             refresh: { [weak self] in
-                self?.refreshAccounts(force: true)
+                self?.refreshNow()
             },
             checkUpdates: { [weak self] in
                 self?.checkForUpdates(showResult: true)
@@ -746,7 +756,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             },
             toggleLaunchAtLogin: { [weak self] in
                 self?.toggleLaunchAtLogin()
-            }
+            },
+            claude: ClaudePanelModel(
+                accounts: claude.accounts,
+                lastError: claude.lastError,
+                updatedText: claude.updatedText,
+                isSwitching: claude.isSwitching,
+                switchAccount: { [weak self] id in
+                    self?.switchClaudeAccount(id)
+                },
+                signIn: { [weak self] email in
+                    self?.signInToClaude(email: email)
+                }
+            ),
+            codexUsageByEmail: directUsageSnapshotsByEmail
         )
         let controller = NSViewController()
         controller.view = panel
@@ -867,6 +890,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         case .usageView:
             clearArmedSwitch()
             accountPanelMode = .usage
+            UserDefaults.standard.set("codex", forKey: providerTabDefaultsKey)
+        case .claudeView:
+            clearArmedSwitch()
+            accountPanelMode = .claude
+            UserDefaults.standard.set("claude", forKey: providerTabDefaultsKey)
+            claude.refreshIfNeeded(maximumAge: 30)
+        case .addClaudeAccount:
+            signInToClaude(email: nil)
+        case .removeClaudeAccount:
+            showRemoveClaudeAccountDialog()
         case .settingsView:
             accountPanelMode = .settings
         case .routeBView:
@@ -1411,6 +1444,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             return (image, statusTitle(resetStatusText, size: fontSize, color: nil), resetStatusText)
         }
         guard let account = toolbarStatusAccounts().first else {
+            if let claudeAccount = claude.active {
+                let percent = claudeToolbarPercent(claudeAccount)
+                return (
+                    MenuBarGlyph.ring(percent: percent, color: usageStatusColor(for: percent), diameter: diameter, lineWidth: compact ? 2 : 2.2),
+                    statusTitle(claudeToolbarText(claudeAccount), size: fontSize, color: (percent ?? 100) < 10 ? .systemRed : nil),
+                    "Claude \(claudeAccount.title), \(remainingPercentText(fromUsed: percent)) left"
+                )
+            }
             return (MenuBarGlyph.symbol("arrow.left.arrow.right", color: nil), NSAttributedString(string: ""), "Codex Account Switcher")
         }
         let label = toolbarLabel(for: account)
@@ -1425,11 +1466,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let image = MenuBarGlyph.ring(percent: percent, color: usageStatusColor(for: percent), diameter: diameter, lineWidth: compact ? 2 : 2.2)
         let isLow = (percent ?? 100) < 10
         let window = usageMode == .fiveHour ? "5-hour" : "weekly"
-        return (
-            image,
-            statusTitle(toolbarStatusText(for: account), size: fontSize, color: isLow ? .systemRed : nil),
-            "Account \(label), \(remainingPercentText(fromUsed: percent)) of the \(window) window left"
-        )
+        let title = NSMutableAttributedString(attributedString: statusTitle(toolbarStatusText(for: account), size: fontSize, color: isLow ? .systemRed : nil))
+        var accessibility = "Account \(label), \(remainingPercentText(fromUsed: percent)) of the \(window) window left"
+        if let claudeAccount = claude.active {
+            let claudePercent = claudeToolbarPercent(claudeAccount)
+            title.append(statusTitle("  \(claudeToolbarText(claudeAccount))", size: fontSize, color: (claudePercent ?? 100) < 10 ? .systemRed : nil))
+            accessibility += ". Claude \(claudeAccount.title), \(remainingPercentText(fromUsed: claudePercent)) left"
+        }
+        return (image, title, accessibility)
     }
 
     private func statusTitle(_ text: String, size: CGFloat, color: NSColor?) -> NSAttributedString {
@@ -1439,7 +1483,73 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         ])
     }
 
+    private func claudeToolbarPercent(_ account: ClaudeAccountSummary) -> Int? {
+        if account.needsLogin { return 0 }
+        return usageMode == .fiveHour ? account.fiveHourRemaining : account.weeklyRemaining
+    }
+
+    private func claudeToolbarText(_ account: ClaudeAccountSummary) -> String {
+        let percent = claudeToolbarPercent(account)
+        return toolbarDisplayStyle == .compact
+            ? "✳︎\(remainingPercentNumberText(fromUsed: percent))"
+            : "✳︎ \(remainingPercentText(fromUsed: percent))"
+    }
+
+    private func switchClaudeAccount(_ id: String) {
+        guard !claude.isSwitching, let target = claude.accounts.first(where: { $0.id == id }) else { return }
+        setResetStatus("Switching")
+        claude.switchTo(id) { [weak self] failure in
+            guard let self else { return }
+            self.setResetStatus(nil)
+            if let failure {
+                self.showAlert(title: "Claude switch failed", message: failure)
+            } else {
+                self.sendNotification(title: "Claude switched", subtitle: target.title, body: "New Claude Code sessions use \(target.title) (\(target.email)).")
+            }
+        }
+    }
+
+    private func signInToClaude(email: String?) {
+        closeAccountPanel()
+        claude.signIn(email: email) { [weak self] failure in
+            if let failure {
+                self?.showAlert(title: "Claude sign-in", message: failure)
+                return
+            }
+            for delay in [20.0, 45.0, 90.0, 180.0] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in self?.claude.refresh() }
+            }
+        }
+    }
+
+    private func showRemoveClaudeAccountDialog() {
+        let candidates = claude.accounts.filter { !$0.isActive }
+        guard !candidates.isEmpty else {
+            showAlert(title: "Remove Claude account", message: "Only the active Claude account is saved. Switch to another account first.")
+            return
+        }
+        let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 300, height: 26))
+        for account in candidates {
+            popup.addItem(withTitle: "\(account.title) · \(account.email)")
+            popup.lastItem?.representedObject = account.id
+        }
+        let alert = NSAlert()
+        alert.messageText = "Remove a Claude account?"
+        alert.informativeText = "Its saved login is deleted from the Keychain. You can sign in again later."
+        alert.accessoryView = popup
+        alert.addButton(withTitle: "Remove")
+        alert.addButton(withTitle: "Cancel")
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertFirstButtonReturn, let id = popup.selectedItem?.representedObject as? String else { return }
+        do {
+            try claude.remove(id)
+        } catch {
+            showAlert(title: "Remove Claude account", message: error.localizedDescription)
+        }
+    }
+
     private func statusTitleKey() -> String {
+        let claudeKey = claude.active.map { "\($0.id)|\(claudeToolbarText($0))" } ?? "-"
         if let resetStatusText {
             return "reset|\(resetStatusText)|\(statusSpinnerFrame.map { String($0 % 12) } ?? "-")|\(toolbarDisplayStyle.rawValue)"
         }
@@ -1453,7 +1563,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 usageMode.rawValue,
                 toolbarDisplayStyle.rawValue
             ].joined(separator: "|")
-        }.joined(separator: "||")
+        }.joined(separator: "||") + "|||" + claudeKey
     }
 
     private func setResetStatus(_ text: String?) {
@@ -1664,6 +1774,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     @objc private func refreshNow() {
         refreshAccounts(force: true)
+        claude.refresh()
     }
 
 

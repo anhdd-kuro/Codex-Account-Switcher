@@ -164,6 +164,7 @@ enum AutoResumeMode: String {
 
 enum AccountPanelMode {
     case usage
+    case claude
     case settings
     case routeB
     case resets
@@ -171,6 +172,9 @@ enum AccountPanelMode {
 
 enum SettingsPanelAction: String {
     case usageView
+    case claudeView
+    case addClaudeAccount
+    case removeClaudeAccount
     case settingsView
     case routeBView
     case resetCreditsView
@@ -200,9 +204,7 @@ enum SettingsPanelAction: String {
 
 func usageStatusColor(for percent: Int?) -> NSColor {
     guard let percent else { return .secondaryLabelColor }
-    if percent >= 50 { return .systemGreen }
-    if percent >= 20 { return .systemOrange }
-    return .systemRed
+    return PanelTheme.current(for: nil).color(PanelTheme.usageTone(for: percent))
 }
 
 extension NSAppearance {
@@ -236,52 +238,53 @@ struct PanelTheme {
         )
     }
 
+    // Vitesse palette (antfu/vitesse-theme): flat surfaces, warm text, green accent.
     // Text
-    var primaryText: NSColor { isDark ? NSColor.white.withAlphaComponent(0.92) : NSColor.black.withAlphaComponent(0.86) }
-    var secondaryText: NSColor { isDark ? Self.rgb(0xEBEBF5, 0.66) : Self.rgb(0x3C3C43, 0.76) }
-    var tertiaryText: NSColor { isDark ? Self.rgb(0xEBEBF5, 0.46) : Self.rgb(0x3C3C43, 0.58) }
+    var primaryText: NSColor { isDark ? Self.rgb(0xCECABE) : Self.rgb(0x393A34) }
+    var secondaryText: NSColor { isDark ? Self.rgb(0x888888) : Self.rgb(0x6F6F68) }
+    var tertiaryText: NSColor { isDark ? Self.rgb(0x888888, 0.72) : Self.rgb(0x393A34, 0.45) }
 
-    // Glass surface
-    var panelTint: NSColor { isDark ? Self.rgb(0x16171E, 0.50) : Self.rgb(0xF6F6FA, 0.55) }
-    var panelEdge: NSColor { isDark ? NSColor.black.withAlphaComponent(0.60) : NSColor.black.withAlphaComponent(0.16) }
+    // Surface
+    var panelTint: NSColor { isDark ? Self.rgb(0x121212) : Self.rgb(0xFFFFFF) }
+    var panelEdge: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.10) : Self.rgb(0x000000, 0.12) }
     var panelHighlight: NSColor { isDark ? NSColor.white : NSColor.white }
 
     // Tiles, hairlines and controls
-    var tileFill: NSColor { isDark ? NSColor.white.withAlphaComponent(0.06) : NSColor.white.withAlphaComponent(0.55) }
-    var tileHoverFill: NSColor { isDark ? NSColor.white.withAlphaComponent(0.10) : NSColor.white.withAlphaComponent(0.82) }
-    var tileBorder: NSColor { isDark ? NSColor.white.withAlphaComponent(0.08) : NSColor.black.withAlphaComponent(0.07) }
-    var hairline: NSColor { isDark ? NSColor.white.withAlphaComponent(0.09) : NSColor.black.withAlphaComponent(0.08) }
-    var controlFill: NSColor { isDark ? NSColor.white.withAlphaComponent(0.09) : NSColor.black.withAlphaComponent(0.05) }
-    var controlHoverFill: NSColor { isDark ? NSColor.white.withAlphaComponent(0.16) : NSColor.black.withAlphaComponent(0.09) }
-    var controlBorder: NSColor { isDark ? NSColor.white.withAlphaComponent(0.12) : NSColor.black.withAlphaComponent(0.06) }
-    var segmentTrack: NSColor { isDark ? NSColor.black.withAlphaComponent(0.26) : NSColor.black.withAlphaComponent(0.06) }
-    var segmentSelected: NSColor { isDark ? NSColor.white.withAlphaComponent(0.17) : NSColor.white }
-    var segmentSelectedBorder: NSColor { isDark ? NSColor.white.withAlphaComponent(0.14) : NSColor.black.withAlphaComponent(0.05) }
-    var trackFill: NSColor { isDark ? NSColor.white.withAlphaComponent(0.10) : NSColor.black.withAlphaComponent(0.08) }
-    var switchOff: NSColor { isDark ? NSColor.white.withAlphaComponent(0.20) : NSColor.black.withAlphaComponent(0.14) }
-    var accent: NSColor { NSColor.controlAccentColor.usingColorSpace(.sRGB) ?? NSColor.controlAccentColor }
+    var tileFill: NSColor { isDark ? Self.rgb(0x1E1E1E) : Self.rgb(0xF7F7F7) }
+    var tileHoverFill: NSColor { isDark ? Self.rgb(0x262626) : Self.rgb(0xEEEEEE) }
+    var tileBorder: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.06) : Self.rgb(0x000000, 0.06) }
+    var hairline: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.08) : Self.rgb(0x000000, 0.08) }
+    var controlFill: NSColor { isDark ? Self.rgb(0x262626) : Self.rgb(0xEEEEEE) }
+    var controlHoverFill: NSColor { isDark ? Self.rgb(0x303030) : Self.rgb(0xE4E4E4) }
+    var controlBorder: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.08) : Self.rgb(0x000000, 0.06) }
+    var segmentTrack: NSColor { isDark ? Self.rgb(0x1E1E1E) : Self.rgb(0xF2F2F2) }
+    var segmentSelected: NSColor { isDark ? Self.rgb(0x2C2C2C) : Self.rgb(0xFFFFFF) }
+    var segmentSelectedBorder: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.08) : Self.rgb(0x000000, 0.08) }
+    var trackFill: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.08) : Self.rgb(0x000000, 0.07) }
+    var switchOff: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.18) : Self.rgb(0x000000, 0.14) }
+    var accent: NSColor { isDark ? Self.rgb(0x4D9375) : Self.rgb(0x1C6B48) }
 
-    // Semantic colours: `color` for graphics, `text` for readable text on the glass
+    // Semantic colours: `color` for graphics, `text` for readable text
     var blueText: NSColor { text(.blue) }
 
     func color(_ tone: Tone) -> NSColor {
         switch tone {
-        case .green: return isDark ? Self.rgb(0x30D158) : Self.rgb(0x34C759)
-        case .orange: return isDark ? Self.rgb(0xFF9F0A) : Self.rgb(0xFF9500)
-        case .red: return isDark ? Self.rgb(0xFF453A) : Self.rgb(0xFF3B30)
-        case .blue: return isDark ? Self.rgb(0x0A84FF) : Self.rgb(0x007AFF)
-        case .indigo: return isDark ? Self.rgb(0x5E5CE6) : Self.rgb(0x5856D6)
+        case .green: return isDark ? Self.rgb(0x4D9375) : Self.rgb(0x1C6B48)
+        case .orange: return isDark ? Self.rgb(0xE6CC77) : Self.rgb(0xBDA437)
+        case .red: return isDark ? Self.rgb(0xCB7676) : Self.rgb(0xAB5959)
+        case .blue: return isDark ? Self.rgb(0x6394BF) : Self.rgb(0x296AA3)
+        case .indigo: return isDark ? Self.rgb(0xA08CC8) : Self.rgb(0x7E5FB0)
         case .neutral: return secondaryText
         }
     }
 
     func text(_ tone: Tone) -> NSColor {
         switch tone {
-        case .green: return isDark ? Self.rgb(0x4BE07A) : Self.rgb(0x1A7A36)
-        case .orange: return isDark ? Self.rgb(0xFFB340) : Self.rgb(0xA34E00)
-        case .red: return isDark ? Self.rgb(0xFF7B72) : Self.rgb(0xC4271D)
-        case .blue: return isDark ? Self.rgb(0x8CC6FF) : Self.rgb(0x0055B3)
-        case .indigo: return isDark ? Self.rgb(0xC3C1FF) : Self.rgb(0x3F3DB8)
+        case .green: return isDark ? Self.rgb(0x5DA994) : Self.rgb(0x1C6B48)
+        case .orange: return isDark ? Self.rgb(0xE6CC77) : Self.rgb(0x8C7A26)
+        case .red: return isDark ? Self.rgb(0xCB7676) : Self.rgb(0xAB5959)
+        case .blue: return isDark ? Self.rgb(0x6394BF) : Self.rgb(0x296AA3)
+        case .indigo: return isDark ? Self.rgb(0xA08CC8) : Self.rgb(0x7E5FB0)
         case .neutral: return primaryText
         }
     }
