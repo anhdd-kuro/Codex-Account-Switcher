@@ -511,7 +511,7 @@ final class AccountSwitcherPanelView: NSView {
             action: card.switchAction
         )
         row.toolTip = card.tooltip
-        row.alphaValue = card.isActive ? 1 : 0.55
+        row.alphaValue = card.isActive ? 1 : 0.8
         if divider {
             row.addSubview(HairlineView(frame: NSRect(x: 6, y: 0, width: contentWidth - 12, height: 0.5), color: theme.hairline))
         }
