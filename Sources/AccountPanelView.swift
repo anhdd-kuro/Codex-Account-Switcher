@@ -23,6 +23,7 @@ final class AccountSwitcherPanelView: NSView {
     private let routeBProfiles: [RouteBProviderProfile]
     private let selectedRouteBProfileID: String?
     private let usageMode: UsageDisplayMode
+    private let claudeUsageMode: UsageDisplayMode
     private let toolbarDisplayStyle: ToolbarDisplayStyle
     private let activeRefreshInterval: Int
     private let idleRefreshInterval: Int
@@ -68,6 +69,7 @@ final class AccountSwitcherPanelView: NSView {
         routeBProfiles: [RouteBProviderProfile],
         selectedRouteBProfileID: String?,
         usageMode: UsageDisplayMode,
+        claudeUsageMode: UsageDisplayMode,
         toolbarDisplayStyle: ToolbarDisplayStyle,
         activeRefreshInterval: Int,
         idleRefreshInterval: Int,
@@ -106,6 +108,7 @@ final class AccountSwitcherPanelView: NSView {
         self.routeBProfiles = routeBProfiles
         self.selectedRouteBProfileID = selectedRouteBProfileID
         self.usageMode = usageMode
+        self.claudeUsageMode = claudeUsageMode
         self.toolbarDisplayStyle = toolbarDisplayStyle
         self.activeRefreshInterval = activeRefreshInterval
         self.idleRefreshInterval = idleRefreshInterval
@@ -804,9 +807,13 @@ final class AccountSwitcherPanelView: NSView {
         var y: CGFloat = 0
 
         y = addSection("Menu bar", rows: [
-            segmentedRow("Show", options: [
+            segmentedRow("Codex", options: [
                 ("5-hour", usageMode == .fiveHour, .usageFiveHour),
                 ("Weekly", usageMode == .weekly, .usageWeekly)
+            ], theme: theme),
+            segmentedRow("Claude", options: [
+                ("5-hour", claudeUsageMode == .fiveHour, .claudeUsageFiveHour),
+                ("Weekly", claudeUsageMode == .weekly, .claudeUsageWeekly)
             ], theme: theme),
             segmentedRow("Size", options: [
                 ("Large", toolbarDisplayStyle == .detailed, .styleDetailed),

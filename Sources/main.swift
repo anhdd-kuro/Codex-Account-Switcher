@@ -213,6 +213,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             UserDefaults.standard.set(newValue.rawValue, forKey: "usageDisplayMode")
         }
     }
+    private var claudeUsageMode: UsageDisplayMode {
+        get {
+            UsageDisplayMode(rawValue: UserDefaults.standard.string(forKey: "claudeUsageDisplayMode") ?? "") ?? .fiveHour
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: "claudeUsageDisplayMode")
+        }
+    }
     private var toolbarDisplayStyle: ToolbarDisplayStyle {
         get {
             ToolbarDisplayStyle(rawValue: UserDefaults.standard.string(forKey: toolbarDisplayStyleDefaultsKey) ?? "") ?? .detailed
@@ -684,7 +692,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             "\(confirmBeforeSwitching)|\(armedSwitchEmail ?? "")",
             "\(launchAtLoginEnabled())|\(remindersEnabled)|\(reminderThreshold)",
             "\(autoSwitchMode.rawValue)|\(autoSwitchThreshold)|\(autoResumeMode.rawValue)",
-            "\(usageMode.rawValue)|\(toolbarDisplayStyle.rawValue)|\(activeRefreshInterval)|\(idleRefreshInterval)",
+            "\(usageMode.rawValue)|\(claudeUsageMode.rawValue)|\(toolbarDisplayStyle.rawValue)|\(activeRefreshInterval)|\(idleRefreshInterval)",
             UserDefaults.standard.string(forKey: selectedRouteBProfileDefaultsKey) ?? "",
             accountLabels().sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: ","),
             health,
@@ -720,6 +728,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             routeBProfiles: routeBProviderProfiles,
             selectedRouteBProfileID: UserDefaults.standard.string(forKey: selectedRouteBProfileDefaultsKey),
             usageMode: usageMode,
+            claudeUsageMode: claudeUsageMode,
             toolbarDisplayStyle: toolbarDisplayStyle,
             activeRefreshInterval: activeRefreshInterval,
             idleRefreshInterval: idleRefreshInterval,
@@ -925,6 +934,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             refreshUI()
         case .usageFiveHour:
             usageMode = .fiveHour
+            refreshUI()
+        case .claudeUsageWeekly:
+            claudeUsageMode = .weekly
+            refreshUI()
+        case .claudeUsageFiveHour:
+            claudeUsageMode = .fiveHour
             refreshUI()
         case .styleDetailed:
             toolbarDisplayStyle = .detailed
@@ -1482,7 +1497,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     private func claudeToolbarPercent(_ account: ClaudeAccountSummary) -> Int? {
         if account.needsLogin { return 0 }
-        return usageMode == .fiveHour ? account.fiveHourRemaining : account.weeklyRemaining
+        return claudeUsageMode == .fiveHour ? account.fiveHourRemaining : account.weeklyRemaining
     }
 
     private func switchClaudeAccount(_ id: String) {

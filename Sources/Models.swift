@@ -181,6 +181,8 @@ enum SettingsPanelAction: String {
     case removeAccount
     case usageWeekly
     case usageFiveHour
+    case claudeUsageWeekly
+    case claudeUsageFiveHour
     case styleDetailed
     case styleCompact
     case toggleLaunchAtLogin
