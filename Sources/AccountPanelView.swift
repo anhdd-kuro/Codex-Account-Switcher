@@ -45,7 +45,7 @@ final class AccountSwitcherPanelView: NSView {
     private let analytics: AnalyticsPanelModel
     private static var analyticsBreakdown: AnalyticsBreakdownMode = .daily
 
-    static let panelWidth: CGFloat = 372
+    static let panelWidth: CGFloat = 452
     private let inset: CGFloat = 12
     private var contentWidth: CGFloat { Self.panelWidth - inset * 2 }
     private var builtForDark: Bool?
