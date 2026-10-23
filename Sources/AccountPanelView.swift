@@ -433,16 +433,15 @@ final class AccountSwitcherPanelView: NSView {
         }
         let active = activeAccount ?? accounts.first(where: { $0.isActive })
         let others = orderedAccounts().filter { $0.email != active?.email }
-        let best = bestNextAccount(among: others, active: active)
-        for account in (active.map { [$0] } ?? []) + others {
-            let card = codexCard(account, isBest: account.email == best?.email, theme: theme, y: y)
+        for (index, account) in ((active.map { [$0] } ?? []) + others).enumerated() {
+            let card = codexCard(account, divider: index > 0, theme: theme, y: y)
             body.addSubview(card)
-            y = card.frame.maxY + 8
+            y = card.frame.maxY
         }
-        return y
+        return y + 8
     }
 
-    private func codexCard(_ account: CodexAccount, isBest: Bool, theme: PanelTheme, y: CGFloat) -> NSView {
+    private func codexCard(_ account: CodexAccount, divider: Bool, theme: PanelTheme, y: CGFloat) -> NSView {
         let needsLogin = accountNeedsLogin(account)
         let snapshot = codexUsageByEmail[account.email]
         let isArmed = confirmBeforeSwitching && armedSwitchEmail == account.email && !isSwitching
@@ -463,12 +462,10 @@ final class AccountSwitcherPanelView: NSView {
         }
         return usageCard(
             UsageCard(
-                monogram: labelForAccount(account),
                 title: account.email,
                 detail: planText(account.plan).replacingOccurrences(of: "ChatGPT ", with: ""),
                 isActive: account.isActive,
                 needsLogin: needsLogin,
-                isBest: isBest,
                 windows: (account.hasFiveHourLimit ? [
                     ("5h", account.fiveHourUsedPercent, snapshot.map { MenuBarGlyph.relativeReset($0.fiveHour.resetAt) ?? "" } ?? fiveHourResetText(from: account.fiveHourUsage))
                 ] : []) + [
@@ -478,6 +475,7 @@ final class AccountSwitcherPanelView: NSView {
                 switchAction: account.isActive || needsLogin || isArmed || isSwitching ? nil : { [weak self] in self?.switchAccount(account.email) }
             ),
             trailing: trailing,
+            divider: divider,
             theme: theme,
             y: y
         )
@@ -486,80 +484,79 @@ final class AccountSwitcherPanelView: NSView {
     // MARK: - Usage card
 
     private struct UsageCard {
-        let monogram: String
         let title: String
         let detail: String
         let isActive: Bool
         let needsLogin: Bool
-        let isBest: Bool
         let windows: [(String, Int?, String)]
         let tooltip: String?
         let switchAction: (() -> Void)?
     }
 
-    /// A header line (identity, status, action) followed by one bar per usage window.
-    private func usageCard(_ card: UsageCard, trailing: [GlassButton], theme: PanelTheme, y: CGFloat) -> NSView {
-        let headerHeight: CGFloat = 24
+    /// A flat row: name line (active dot, title, detail, status) above one bar per usage window.
+    private func usageCard(_ card: UsageCard, trailing: [GlassButton], divider: Bool, theme: PanelTheme, y: CGFloat) -> NSView {
+        let headerHeight: CGFloat = 22
         let rowHeight: CGFloat = 18
+        let padding: CGFloat = 9
         let bodyRows = card.needsLogin ? 1 : card.windows.count
-        let height = 12 + headerHeight + 6 + CGFloat(bodyRows) * rowHeight + 10
-        let tile = TileView(
+        let height = padding + headerHeight + 4 + CGFloat(bodyRows) * rowHeight + padding
+        let row = TileView(
             frame: NSRect(x: inset, y: y, width: contentWidth, height: height),
-            fill: theme.tileFill,
-            border: card.isActive ? theme.accent.withAlphaComponent(0.55) : theme.tileBorder,
-            borderWidth: card.isActive ? 1 : 0.5,
+            fill: .clear,
+            border: .clear,
+            borderWidth: 0,
+            cornerRadius: 8,
             hoverFill: card.switchAction == nil ? nil : theme.tileHoverFill,
             accessibilityLabel: card.switchAction == nil ? nil : "Switch to \(card.title)",
             action: card.switchAction
         )
-        tile.toolTip = card.tooltip
-        tile.alphaValue = card.isActive ? 1 : 0.9
+        row.toolTip = card.tooltip
+        row.alphaValue = card.isActive ? 1 : 0.55
+        if divider {
+            row.addSubview(HairlineView(frame: NSRect(x: 6, y: 0, width: contentWidth - 12, height: 0.5), color: theme.hairline))
+        }
 
-        let tone: PanelTheme.Tone = card.needsLogin ? .red : card.isActive ? .green : .neutral
-        tile.addSubview(MonogramView(
-            frame: NSRect(x: 12, y: 12, width: 24, height: 24),
-            text: card.monogram,
-            fill: tone == .neutral ? theme.controlFill : theme.tint(tone),
-            textColor: theme.text(tone)
-        ))
-
-        var rightEdge = contentWidth - 12
+        var rightEdge = contentWidth - 6
         for button in trailing.reversed() {
             rightEdge -= button.frame.width
-            tile.place(button, x: rightEdge, y: 12)
+            row.place(button, x: rightEdge, y: padding + (headerHeight - button.frame.height) / 2)
             rightEdge -= 6
         }
-        let tag: CapsuleTagView? = card.needsLogin
-            ? CapsuleTagView(text: "Signed out", theme: theme, foreground: theme.text(.red), background: theme.tint(.red))
-            : card.isActive ? CapsuleTagView(text: "Active", theme: theme, foreground: theme.text(.green), background: theme.tint(.green), dot: theme.color(.green))
-            : card.isBest ? CapsuleTagView(text: "Best next", theme: theme, foreground: theme.text(.blue), background: theme.tint(.blue)) : nil
-        if let tag {
+        if card.needsLogin {
+            let tag = CapsuleTagView(text: "Signed out", theme: theme, foreground: theme.text(.red), background: theme.tint(.red))
             rightEdge -= tag.frame.width
-            tile.place(tag, x: rightEdge, y: 12 + (headerHeight - tag.frame.height) / 2)
+            row.place(tag, x: rightEdge, y: padding + (headerHeight - tag.frame.height) / 2)
             rightEdge -= 8
         }
 
-        let textX: CGFloat = 44
+        let textX: CGFloat = card.isActive ? 18 : 6
+        if card.isActive {
+            let dot = NSView(frame: NSRect(x: 6, y: padding + (headerHeight - 6) / 2, width: 6, height: 6))
+            dot.wantsLayer = true
+            dot.layer?.cornerRadius = 3
+            dot.layer?.backgroundColor = theme.accent.cgColor
+            row.addSubview(dot)
+        }
         let available = rightEdge - textX
         let title = makeLabel(card.title, size: 13, weight: .semibold, color: theme.primaryText)
         let detail = makeLabel(card.detail, size: 11, color: theme.secondaryText)
-        let titleWidth = min(title.frame.width, available - min(detail.frame.width, 56) - 6)
+        let titleWidth = min(title.frame.width, available - min(detail.frame.width, 56) - 8)
         title.toolTip = card.title
-        tile.place(title, x: textX, y: 12 + (headerHeight - title.frame.height) / 2, width: titleWidth)
+        row.place(title, x: textX, y: padding + (headerHeight - title.frame.height) / 2, width: titleWidth)
         detail.toolTip = card.detail
-        let detailX = textX + titleWidth + 6
+        let detailX = textX + titleWidth + 8
         if available - (detailX - textX) > 24 {
-            tile.place(detail, x: detailX, y: 12 + (headerHeight - detail.frame.height) / 2 + 1, width: available - (detailX - textX))
+            row.place(detail, x: detailX, y: padding + (headerHeight - detail.frame.height) / 2 + 1, width: available - (detailX - textX))
         }
 
-        var rowY = 12 + headerHeight + 6
+        var rowY = padding + headerHeight + 4
         if card.needsLogin {
-            tile.place(makeLabel("Session expired · usage unavailable", size: 11, color: theme.secondaryText), x: 12, y: rowY + 2, width: contentWidth - 24)
-            return tile
+            row.place(makeLabel("Session expired · usage unavailable", size: 11, color: theme.secondaryText), x: 6, y: rowY + 2, width: contentWidth - 12)
+            return row
         }
         for (label, percent, reset) in card.windows {
-            tile.addSubview(UsageBarRowView(
-                frame: NSRect(x: 12, y: rowY, width: contentWidth - 24, height: rowHeight),
+            row.addSubview(UsageBarRowView(
+                frame: NSRect(x: 6, y: rowY, width: contentWidth - 12, height: rowHeight),
                 label: label,
                 percent: percent,
                 reset: reset,
@@ -568,7 +565,7 @@ final class AccountSwitcherPanelView: NSView {
             ))
             rowY += rowHeight
         }
-        return tile
+        return row
     }
 
     private func emptyAccountsTile(theme: PanelTheme, y: CGFloat) -> NSView {
@@ -590,22 +587,6 @@ final class AccountSwitcherPanelView: NSView {
         }
         tile.place(device, x: 12 + add.frame.width + 8, y: 108)
         return tile
-    }
-
-    private func bestNextAccount(among others: [CodexAccount], active: CodexAccount?) -> CodexAccount? {
-        let candidates = others.filter { !accountNeedsLogin($0) && $0.fiveHourUsedPercent != nil }
-        let best = candidates.max { score($0) < score($1) }
-        guard let best else { return nil }
-        if let active, let activeFive = active.fiveHourUsedPercent, let bestFive = best.fiveHourUsedPercent, bestFive <= activeFive {
-            return nil
-        }
-        return best
-    }
-
-    private func score(_ account: CodexAccount) -> Int {
-        let five = account.fiveHourUsedPercent ?? 0
-        let weekly = account.weeklyUsedPercent ?? five
-        return min(five, weekly) * 2 + five
     }
 
     // MARK: - Resets
@@ -1279,9 +1260,6 @@ extension AccountSwitcherPanelView {
 
         let active = claude.active
         let others = claude.accounts.filter { !$0.isActive }
-        let candidates = others.filter { !$0.needsLogin && $0.fiveHourRemaining != nil }
-        let activeScore = active.map(claudeScore) ?? -1
-        let bestID = candidates.max { claudeScore($0) < claudeScore($1) }.flatMap { claudeScore($0) > activeScore ? $0.id : nil }
         for account in (active.map { [$0] } ?? []) + others {
             var trailing: [GlassButton] = []
             if account.needsLogin {
@@ -1292,12 +1270,10 @@ extension AccountSwitcherPanelView {
             let canSwitch = !account.isActive && !account.needsLogin && !claude.isSwitching
             let card = usageCard(
                 UsageCard(
-                    monogram: String(account.title.prefix(1)).uppercased(),
                     title: account.title,
                     detail: account.email,
                     isActive: account.isActive,
                     needsLogin: account.needsLogin,
-                    isBest: account.id == bestID,
                     windows: (account.hasFiveHourLimit ? [
                         ("5h", account.fiveHourRemaining, MenuBarGlyph.relativeReset(account.fiveHourResetAt) ?? "")
                     ] : []) + [
@@ -1307,18 +1283,13 @@ extension AccountSwitcherPanelView {
                     switchAction: canSwitch ? { [weak self] in self?.claude.switchAccount(account.id) } : nil
                 ),
                 trailing: trailing,
+                divider: y > startY,
                 theme: theme,
                 y: y
             )
             body.addSubview(card)
-            y = card.frame.maxY + 8
+            y = card.frame.maxY
         }
-        return y + 4
-    }
-
-    private func claudeScore(_ account: ClaudeAccountSummary) -> Int {
-        let five = account.fiveHourRemaining ?? 0
-        let weekly = account.weeklyRemaining ?? five
-        return min(five, weekly) * 2 + five
+        return y + 12
     }
 }
