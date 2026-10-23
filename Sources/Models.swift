@@ -256,7 +256,20 @@ struct PanelTheme {
     var tertiaryText: NSColor { isDark ? Self.rgb(0x888888, 0.72) : Self.rgb(0x393A34, 0.45) }
 
     // Surface
-    var panelTint: NSColor { isDark ? Self.rgb(0x121212) : Self.rgb(0xFFFFFF) }
+    var panelTint: NSColor { isDark ? Self.rgb(0x0A0A0A) : Self.rgb(0xFFFFFF) }
+
+    static let glassOpacityKey = "panelGlassOpacity"
+    static let glassOpacityDidChange = Notification.Name("panelGlassOpacityDidChange")
+    static var glassOpacity: CGFloat {
+        get {
+            guard UserDefaults.standard.object(forKey: glassOpacityKey) != nil else { return 0.8 }
+            return CGFloat(min(1, max(0.3, UserDefaults.standard.double(forKey: glassOpacityKey))))
+        }
+        set {
+            UserDefaults.standard.set(Double(min(1, max(0.3, newValue))), forKey: glassOpacityKey)
+            NotificationCenter.default.post(name: glassOpacityDidChange, object: nil)
+        }
+    }
     var panelEdge: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.10) : Self.rgb(0x000000, 0.12) }
     var panelHighlight: NSColor { isDark ? NSColor.white : NSColor.white }
 

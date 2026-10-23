@@ -848,7 +848,8 @@ final class AccountSwitcherPanelView: NSView {
                 ("Large", toolbarDisplayStyle == .detailed, .styleDetailed),
                 ("Small", toolbarDisplayStyle == .compact, .styleCompact)
             ], theme: theme),
-            menuBarPreviewRow(theme: theme)
+            menuBarPreviewRow(theme: theme),
+            glassOpacityRow(theme: theme)
         ], into: body, y: y, theme: theme)
 
         y = addSection("Automation", rows: [
@@ -939,6 +940,20 @@ final class AccountSwitcherPanelView: NSView {
             }
             row.place(makeLabel(title, size: 12.5, weight: .medium, color: theme.primaryText), x: 12, y: 8, width: rightEdge - 22)
             row.place(makeLabel(detail, size: 11, color: theme.secondaryText), x: 12, y: 26, width: rightEdge - 22)
+        }
+    }
+
+    private func glassOpacityRow(theme: PanelTheme) -> SettingsRow {
+        SettingsRow(height: 50) { row, width in
+            let percent = makeLabel("\(Int((PanelTheme.glassOpacity * 100).rounded()))%", size: 11.5, color: theme.secondaryText, alignment: .right, monospacedDigits: true)
+            let slider = ClosureSlider(frame: NSRect(x: 0, y: 0, width: 120, height: 20), value: Double(PanelTheme.glassOpacity), range: 0.3...1, theme: theme) { value in
+                PanelTheme.glassOpacity = CGFloat(value)
+                percent.stringValue = "\(Int((value * 100).rounded()))%"
+            }
+            row.place(percent, x: width - 12 - 36, y: 17, width: 36)
+            row.place(slider, x: width - 12 - 36 - 8 - 120, y: 15)
+            row.place(makeLabel("Glass opacity", size: 12.5, weight: .medium, color: theme.primaryText), x: 12, y: 8, width: width - 200)
+            row.place(makeLabel("Lower values show more blur", size: 11, color: theme.secondaryText), x: 12, y: 26, width: width - 200)
         }
     }
 
