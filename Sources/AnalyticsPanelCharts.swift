@@ -3,28 +3,28 @@ import Foundation
 
 // MARK: - Activity heatmap
 
-/// 13 weeks × 7 days, Sunday at the top, month labels above and a Less → More legend below (§4.2).
+/// 26 weeks × 7 days, Sunday at the top, month labels above and a Less → More legend below (§4.2).
 final class AnalyticsHeatmapView: NSView, NSViewToolTipOwner {
-    static let height: CGFloat = 156
+    static func height(width: CGFloat) -> CGFloat { 13 + 7 * ((width - 14) / 26) + 16 }
 
     private let cells: [AnalyticsHeatCell]
     private let theme: PanelTheme
     private let colors: [NSColor]
     private let labelColumn: CGFloat = 14
     private let monthRow: CGFloat = 13
-    private let weeks = 13
-    private var pitch: CGFloat { 18 }
+    private let weeks = 26
+    private var pitch: CGFloat { (bounds.width - labelColumn) / CGFloat(weeks) }
     private var cellSize: CGFloat { max(2, pitch - 1) }
 
     init(frame: NSRect, cells: [AnalyticsHeatCell], theme: PanelTheme) {
         self.cells = cells
         self.theme = theme
         self.colors = AnalyticsPanelPalette.heatLevels(theme)
-        super.init(frame: NSRect(origin: frame.origin, size: NSSize(width: frame.width, height: Self.height)))
+        super.init(frame: NSRect(origin: frame.origin, size: NSSize(width: frame.width, height: Self.height(width: frame.width))))
         setAccessibilityElement(true)
         setAccessibilityRole(.image)
         let active = cells.filter { $0.tokens > 0 }.count
-        setAccessibilityLabel("Activity heatmap, \(active) active days in the last 3 months")
+        setAccessibilityLabel("Activity heatmap, \(active) active days in the last 6 months")
         for index in cells.indices {
             addToolTip(cellRect(index).insetBy(dx: -0.5, dy: -0.5), owner: self, userData: nil)
         }

@@ -223,8 +223,8 @@ struct AnalyticsPanelBuilder {
     // MARK: - 5. Heatmap
 
     private func heatmap(_ snapshot: AnalyticsSnapshot, into body: NSView, y startY: CGFloat) -> CGFloat {
-        let y = sectionHeader("Activity", trailing: "Last 3 months", into: body, y: startY)
-        let card = tile(y: y, height: AnalyticsHeatmapView.height + 22)
+        let y = sectionHeader("Activity", trailing: "Last 6 months", into: body, y: startY)
+        let card = tile(y: y, height: AnalyticsHeatmapView.height(width: width - 24) + 22)
         card.addSubview(AnalyticsHeatmapView(frame: NSRect(x: 12, y: 12, width: width - 24, height: 0), cells: snapshot.heatmap, theme: theme))
         body.addSubview(card)
         return card.frame.maxY + sectionGap
