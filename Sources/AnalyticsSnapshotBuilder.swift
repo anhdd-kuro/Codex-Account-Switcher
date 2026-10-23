@@ -191,9 +191,9 @@ struct AnalyticsSnapshotBuilder {
             .map { AnalyticsModelShare(name: $0.0, tokens: $0.1, share: all > 0 ? Double($0.1) / Double(all) * 100 : 0) }
     }
 
-    /// §4.2: 5 week columns starting on Sunday; levels are quantiles over non-zero days.
+    /// §4.2: 13 week columns starting on Sunday; levels are quantiles over non-zero days.
     private func heatmap(_ daily: [Int: (totals: AnalyticsTotals, models: [String: Int])], today: Int) -> [AnalyticsHeatCell] {
-        let start = today - Self.weekday(today) - 7 * 4
+        let start = today - Self.weekday(today) - 7 * 12
         let values = (start...today).map { max(0, daily[$0]?.totals.total ?? 0) }
         let sorted = values.filter { $0 > 0 }.sorted()
         func quantile(_ p: Double) -> Double {

@@ -3,17 +3,17 @@ import Foundation
 
 // MARK: - Activity heatmap
 
-/// 5 weeks × 7 days, Sunday at the top, month labels above and a Less → More legend below (§4.2).
+/// 13 weeks × 7 days, Sunday at the top, month labels above and a Less → More legend below (§4.2).
 final class AnalyticsHeatmapView: NSView, NSViewToolTipOwner {
-    static let height: CGFloat = 130
+    static let height: CGFloat = 156
 
     private let cells: [AnalyticsHeatCell]
     private let theme: PanelTheme
     private let colors: [NSColor]
     private let labelColumn: CGFloat = 14
     private let monthRow: CGFloat = 13
-    private let weeks = 5
-    private var pitch: CGFloat { 14 }
+    private let weeks = 13
+    private var pitch: CGFloat { 18 }
     private var cellSize: CGFloat { max(2, pitch - 1) }
 
     init(frame: NSRect, cells: [AnalyticsHeatCell], theme: PanelTheme) {
@@ -24,7 +24,7 @@ final class AnalyticsHeatmapView: NSView, NSViewToolTipOwner {
         setAccessibilityElement(true)
         setAccessibilityRole(.image)
         let active = cells.filter { $0.tokens > 0 }.count
-        setAccessibilityLabel("Activity heatmap, \(active) active days in the last 30 days")
+        setAccessibilityLabel("Activity heatmap, \(active) active days in the last 3 months")
         for index in cells.indices {
             addToolTip(cellRect(index).insetBy(dx: -0.5, dy: -0.5), owner: self, userData: nil)
         }
