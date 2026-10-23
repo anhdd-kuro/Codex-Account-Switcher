@@ -61,20 +61,11 @@ extension NSView {
 
 // MARK: - Panel surface
 
-/// The panel's Vitesse surface: a blurred backdrop under a tint whose opacity is the Glass opacity setting.
+/// The panel's flat, opaque Vitesse surface with a hairline edge.
 final class GlassPanelBackground: NSView {
     let contentView: FlippedContainerView
-    private let tint = NSView()
-    private let theme: PanelTheme
-
-    deinit { NotificationCenter.default.removeObserver(self) }
-
-    private func applyOpacity() {
-        tint.layer?.backgroundColor = theme.panelTint.withAlphaComponent(PanelTheme.glassOpacity).cgColor
-    }
 
     init(frame: NSRect, theme: PanelTheme, cornerRadius: CGFloat = 16) {
-        self.theme = theme
         contentView = FlippedContainerView(frame: NSRect(origin: .zero, size: frame.size))
         contentView.autoresizingMask = [.width, .height]
         super.init(frame: frame)
@@ -84,19 +75,7 @@ final class GlassPanelBackground: NSView {
         let surface = NSView(frame: bounds)
         surface.autoresizingMask = [.width, .height]
         surface.wantsLayer = true
-        let blur = NSVisualEffectView(frame: bounds)
-        blur.autoresizingMask = [.width, .height]
-        blur.material = .hudWindow
-        blur.blendingMode = .behindWindow
-        blur.state = .active
-        blur.appearance = NSAppearance(named: theme.isDark ? .darkAqua : .aqua)
-        surface.addSubview(blur)
-        tint.frame = bounds
-        tint.autoresizingMask = [.width, .height]
-        tint.wantsLayer = true
-        surface.addSubview(tint)
-        applyOpacity()
-        NotificationCenter.default.addObserver(forName: PanelTheme.glassOpacityDidChange, object: nil, queue: .main) { [weak self] _ in self?.applyOpacity() }
+        surface.layer?.backgroundColor = theme.panelTint.cgColor
         surface.layer?.cornerRadius = cornerRadius
         surface.layer?.cornerCurve = .continuous
         surface.layer?.borderWidth = 1
@@ -931,28 +910,4 @@ extension NSAlert {
         NSApp.activate(ignoringOtherApps: true)
         return runModal()
     }
-}
-
-/// NSSlider that reports its value through a closure.
-final class ClosureSlider: NSSlider {
-    private let onChange: (Double) -> Void
-
-    init(frame: NSRect, value: Double, range: ClosedRange<Double>, theme: PanelTheme, onChange: @escaping (Double) -> Void) {
-        self.onChange = onChange
-        super.init(frame: frame)
-        minValue = range.lowerBound
-        maxValue = range.upperBound
-        doubleValue = value
-        controlSize = .small
-        trackFillColor = theme.accent
-        isContinuous = true
-        target = self
-        action = #selector(changed)
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    @objc private func changed() { onChange(doubleValue) }
 }

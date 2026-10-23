@@ -252,39 +252,26 @@ struct PanelTheme {
     // Vitesse palette (antfu/vitesse-theme): flat surfaces, warm text, green accent.
     // Text
     var primaryText: NSColor { isDark ? Self.rgb(0xCECABE) : Self.rgb(0x393A34) }
-    var secondaryText: NSColor { isDark ? Self.rgb(0x9A9A9A) : Self.rgb(0x6F6F68) }
-    var tertiaryText: NSColor { isDark ? Self.rgb(0x9A9A9A, 0.8) : Self.rgb(0x393A34, 0.45) }
+    var secondaryText: NSColor { isDark ? Self.rgb(0x888888) : Self.rgb(0x6F6F68) }
+    var tertiaryText: NSColor { isDark ? Self.rgb(0x888888, 0.72) : Self.rgb(0x393A34, 0.45) }
 
     // Surface
-    var panelTint: NSColor { isDark ? Self.rgb(0x0E0E0E) : Self.rgb(0xFFFFFF) }
-
-    static let glassOpacityKey = "panelGlassOpacity"
-    static let glassOpacityDidChange = Notification.Name("panelGlassOpacityDidChange")
-    static var glassOpacity: CGFloat {
-        get {
-            guard UserDefaults.standard.object(forKey: glassOpacityKey) != nil else { return 0.8 }
-            return CGFloat(min(1, max(0.1, UserDefaults.standard.double(forKey: glassOpacityKey))))
-        }
-        set {
-            UserDefaults.standard.set(Double(min(1, max(0.1, newValue))), forKey: glassOpacityKey)
-            NotificationCenter.default.post(name: glassOpacityDidChange, object: nil)
-        }
-    }
+    var panelTint: NSColor { isDark ? Self.rgb(0x121212) : Self.rgb(0xFFFFFF) }
     var panelEdge: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.10) : Self.rgb(0x000000, 0.12) }
     var panelHighlight: NSColor { isDark ? NSColor.white : NSColor.white }
 
     // Tiles, hairlines and controls
-    var tileFill: NSColor { isDark ? Self.rgb(0x1C1C1C) : Self.rgb(0xF7F7F7) }
-    var tileHoverFill: NSColor { isDark ? Self.rgb(0x242424) : Self.rgb(0xEEEEEE) }
-    var tileBorder: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.10) : Self.rgb(0x000000, 0.06) }
-    var hairline: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.10) : Self.rgb(0x000000, 0.08) }
-    var controlFill: NSColor { isDark ? Self.rgb(0x242424) : Self.rgb(0xEEEEEE) }
-    var controlHoverFill: NSColor { isDark ? Self.rgb(0x2C2C2C) : Self.rgb(0xE4E4E4) }
-    var controlBorder: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.11) : Self.rgb(0x000000, 0.06) }
-    var segmentTrack: NSColor { isDark ? Self.rgb(0x141414) : Self.rgb(0xF2F2F2) }
-    var segmentSelected: NSColor { isDark ? Self.rgb(0x2E2E2E) : Self.rgb(0xFFFFFF) }
+    var tileFill: NSColor { isDark ? Self.rgb(0x1E1E1E) : Self.rgb(0xF7F7F7) }
+    var tileHoverFill: NSColor { isDark ? Self.rgb(0x262626) : Self.rgb(0xEEEEEE) }
+    var tileBorder: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.06) : Self.rgb(0x000000, 0.06) }
+    var hairline: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.08) : Self.rgb(0x000000, 0.08) }
+    var controlFill: NSColor { isDark ? Self.rgb(0x262626) : Self.rgb(0xEEEEEE) }
+    var controlHoverFill: NSColor { isDark ? Self.rgb(0x303030) : Self.rgb(0xE4E4E4) }
+    var controlBorder: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.08) : Self.rgb(0x000000, 0.06) }
+    var segmentTrack: NSColor { isDark ? Self.rgb(0x1E1E1E) : Self.rgb(0xF2F2F2) }
+    var segmentSelected: NSColor { isDark ? Self.rgb(0x2C2C2C) : Self.rgb(0xFFFFFF) }
     var segmentSelectedBorder: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.08) : Self.rgb(0x000000, 0.08) }
-    var trackFill: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.10) : Self.rgb(0x000000, 0.07) }
+    var trackFill: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.08) : Self.rgb(0x000000, 0.07) }
     var switchOff: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.18) : Self.rgb(0x000000, 0.14) }
     var accent: NSColor { isDark ? Self.rgb(0x4D9375) : Self.rgb(0x1C6B48) }
 

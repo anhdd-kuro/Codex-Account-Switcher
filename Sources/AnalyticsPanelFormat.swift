@@ -147,7 +147,7 @@ enum AnalyticsPanelPalette {
     /// Five heatmap levels; level 0 sits on the tile as an empty well.
     static func heatLevels(_ theme: PanelTheme) -> [NSColor] {
         theme.isDark
-            ? [theme.trackFill, rgb(0x047857), rgb(0x059669), rgb(0x10B981), rgb(0x34D399)]
+            ? [theme.trackFill, rgb(0x065F46), rgb(0x059669), rgb(0x10B981), rgb(0x34D399)]
             : [rgb(0xEBEDF0), rgb(0xA7F3D0), rgb(0x6EE7B7), rgb(0x34D399), rgb(0x10B981)]
     }
 
