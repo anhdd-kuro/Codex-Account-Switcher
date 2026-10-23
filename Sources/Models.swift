@@ -274,17 +274,17 @@ struct PanelTheme {
     var panelHighlight: NSColor { isDark ? NSColor.white : NSColor.white }
 
     // Tiles, hairlines and controls
-    var tileFill: NSColor { isDark ? Self.rgb(0x181818) : Self.rgb(0xF7F7F7) }
-    var tileHoverFill: NSColor { isDark ? Self.rgb(0x1C1C1C) : Self.rgb(0xEEEEEE) }
+    var tileFill: NSColor { isDark ? Self.rgb(0x1C1C1C) : Self.rgb(0xF7F7F7) }
+    var tileHoverFill: NSColor { isDark ? Self.rgb(0x242424) : Self.rgb(0xEEEEEE) }
     var tileBorder: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.10) : Self.rgb(0x000000, 0.06) }
     var hairline: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.10) : Self.rgb(0x000000, 0.08) }
-    var controlFill: NSColor { isDark ? Self.rgb(0x1E1E1E) : Self.rgb(0xEEEEEE) }
-    var controlHoverFill: NSColor { isDark ? Self.rgb(0x262626) : Self.rgb(0xE4E4E4) }
+    var controlFill: NSColor { isDark ? Self.rgb(0x242424) : Self.rgb(0xEEEEEE) }
+    var controlHoverFill: NSColor { isDark ? Self.rgb(0x2C2C2C) : Self.rgb(0xE4E4E4) }
     var controlBorder: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.11) : Self.rgb(0x000000, 0.06) }
-    var segmentTrack: NSColor { isDark ? Self.rgb(0x161616) : Self.rgb(0xF2F2F2) }
-    var segmentSelected: NSColor { isDark ? Self.rgb(0x242424) : Self.rgb(0xFFFFFF) }
+    var segmentTrack: NSColor { isDark ? Self.rgb(0x141414) : Self.rgb(0xF2F2F2) }
+    var segmentSelected: NSColor { isDark ? Self.rgb(0x2E2E2E) : Self.rgb(0xFFFFFF) }
     var segmentSelectedBorder: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.08) : Self.rgb(0x000000, 0.08) }
-    var trackFill: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.08) : Self.rgb(0x000000, 0.07) }
+    var trackFill: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.10) : Self.rgb(0x000000, 0.07) }
     var switchOff: NSColor { isDark ? Self.rgb(0xFFFFFF, 0.18) : Self.rgb(0x000000, 0.14) }
     var accent: NSColor { isDark ? Self.rgb(0x4D9375) : Self.rgb(0x1C6B48) }
 
