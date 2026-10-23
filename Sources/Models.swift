@@ -256,7 +256,7 @@ struct PanelTheme {
     var tertiaryText: NSColor { isDark ? Self.rgb(0x888888, 0.72) : Self.rgb(0x393A34, 0.45) }
 
     // Surface
-    var panelTint: NSColor { isDark ? Self.rgb(0x161616) : Self.rgb(0xFFFFFF) }
+    var panelTint: NSColor { isDark ? Self.rgb(0x212121) : Self.rgb(0xFFFFFF) }
 
     static let glassOpacityKey = "panelGlassOpacity"
     static let glassOpacityDidChange = Notification.Name("panelGlassOpacityDidChange")
