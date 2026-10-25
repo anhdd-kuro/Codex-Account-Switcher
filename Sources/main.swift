@@ -3064,6 +3064,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     private func restartCodexApp() -> CommandResult {
         var transcript: [String] = []
+        let desktop = SpaceRestorer(windowsOf: Set(codexAppPIDs().compactMap { Int32($0) }))
         transcript.append("Quitting \(codexDesktopAppName) process tree...")
 
         // Ask politely first, then force; each step returns as soon as the processes are gone.
@@ -3084,8 +3085,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
 
         transcript.append("Opening \(codexDesktopAppName)...")
+        desktop?.showRememberedSpace()
         let openResult = run("/usr/bin/open", [codexDesktopAppPath])
         if openResult.status != 0 {
+            desktop?.returnToPreviousSpace()
             return CommandResult(status: openResult.status, output: transcript.joined(separator: "\n") + "\n" + openResult.output)
         }
 
@@ -3094,8 +3097,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             self.run("/usr/bin/pgrep", ["-f", mainExecutablePattern]).status == 0
         }
         guard launched else {
+            desktop?.returnToPreviousSpace()
             transcript.append("\(codexDesktopAppName) did not report as running after launch.")
             return CommandResult(status: 1, output: transcript.joined(separator: "\n"))
+        }
+        if let desktop, !desktop.isVisible {
+            // Let the first window open on the remembered desktop before leaving it.
+            _ = waitUntil(timeout: 8) { SpaceRestorer(windowsOf: Set(self.codexAppPIDs().compactMap { Int32($0) })) != nil }
+            Thread.sleep(forTimeInterval: 0.6)
+            desktop.returnToPreviousSpace()
         }
         return CommandResult(status: 0, output: transcript.joined(separator: "\n"))
     }
