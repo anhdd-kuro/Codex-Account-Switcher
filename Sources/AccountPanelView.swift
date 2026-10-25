@@ -848,7 +848,6 @@ final class AccountSwitcherPanelView: NSView {
 
         let cursorRow: [SettingsRow] = cursor.isInstalled ? [segmentedRow("Cursor", options: [
             ("Off", cursorLane == .off, .cursorBarOff),
-            ("Plan", cursorLane == .plan, .cursorBarPlan),
             ("Auto", cursorLane == .auto, .cursorBarAuto),
             ("API", cursorLane == .api, .cursorBarApi)
         ], theme: theme)] : []
@@ -875,7 +874,7 @@ final class AccountSwitcherPanelView: NSView {
             toggleRow("Auto-switch", detail: "Switch Codex and Claude when low", isOn: autoSwitchMode != .off, action: .toggleAutoSwitch, popup: (autoSwitchPopupText(), .editAutoSwitch), theme: theme),
             popupRow("Auto-resume", detail: "Continue the Codex task after a switch", value: autoResumeText(), action: .editAutoResume, theme: theme),
             toggleRow("Toast on limit reset", detail: "Show a brief message when a limit resets", isOn: Celebration.toastEnabled, action: .toggleToastOnReset, theme: theme),
-            toggleRow("Confetti on limit reset", detail: "Celebrate when a limit refills after you were near it", isOn: Celebration.confettiEnabled, action: .toggleConfettiOnReset, theme: theme),
+            toggleRow("Fireworks on limit reset", detail: "Celebrate when a limit refills after you were near it", isOn: Celebration.confettiEnabled, action: .toggleConfettiOnReset, theme: theme),
             toggleRow("Confirm before switching", detail: "Click once to arm, again to relaunch", isOn: confirmBeforeSwitching, action: .toggleConfirmSwitch, theme: theme)
         ], into: body, y: y, theme: theme)
 
@@ -922,11 +921,12 @@ final class AccountSwitcherPanelView: NSView {
     private func segmentedRow(_ title: String, options: [(String, Bool, SettingsPanelAction)], theme: PanelTheme) -> SettingsRow {
         SettingsRow(height: 40) { [weak self] row, width in
             let label = makeLabel(title, size: 12.5, weight: .medium, color: theme.primaryText)
-            row.place(label, x: 12, y: (40 - label.frame.height) / 2, width: width - 180)
+            let controlWidth = max(150, CGFloat(options.count) * 62)
+            row.place(label, x: 12, y: (40 - label.frame.height) / 2, width: width - controlWidth - 30)
             let segments = options.map { option in
                 SegmentedTabsView.Segment(title: option.0, badge: nil, isSelected: option.1) { self?.performSettingsAction(option.2) }
             }
-            row.addSubview(SegmentedTabsView(frame: NSRect(x: width - 12 - 150, y: 8, width: 150, height: 24), theme: theme, segments: segments, fontSize: 11.5))
+            row.addSubview(SegmentedTabsView(frame: NSRect(x: width - 12 - controlWidth, y: 8, width: controlWidth, height: 24), theme: theme, segments: segments, fontSize: 11.5))
         }
     }
 
@@ -1320,7 +1320,7 @@ extension AccountSwitcherPanelView {
     fileprivate func buildCursorCard(into body: NSView, y: CGFloat, theme: PanelTheme) -> CGFloat {
         let snapshot = cursor.snapshot
         let reset = MenuBarGlyph.relativeReset(snapshot?.resetAt) ?? ""
-        let lanes: [(String, Int?)] = [("Plan", snapshot?.planUsed), ("Auto", snapshot?.autoUsed), ("API", snapshot?.apiUsed)]
+        let lanes: [(String, Int?)] = [("Auto", snapshot?.autoUsed), ("API", snapshot?.apiUsed)]
         let windows = lanes.compactMap { lane -> (String, Int?, String)? in
             lane.1.map { (lane.0, 100 - $0, reset) }
         }

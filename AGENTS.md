@@ -62,7 +62,7 @@ Claude fork notes:
 - **Codex**: accounts come from `codex-auth`; usage from `chatgpt.com/backend-api/wham/usage`. `plan_type` from that response decides the 5h window: a plan type containing `pro` (ChatGPT Pro, Business premium "prolite") has no 5-hour limit and shows weekly only. `codex-auth` labels the prolite seat "Business", so the label is not enough.
 - **Claude**: `api.anthropic.com/api/oauth/usage`. Every plan shows the 5h window, including Team premium seats. Keep the Keychain rules in "Claude fork notes" above.
 - **Cursor** (`Sources/CursorUsage.swift`): read-only. Token from `cursorAuth/accessToken` in Cursor's `state.vscdb` (via `/usr/bin/sqlite3 -readonly`), user id from `~/.cursor/cli-config.json`, then `cursor.com/api/usage-summary` with the `WorkosCursorSessionToken` cookie. Redirects off cursor.com are refused so the cookie never leaves it. Never log the token or cookie. No switching, no analytics tokens yet.
-- Menu bar parts per provider: Codex and Claude pick 5-hour or Weekly; Cursor picks Off, Plan, Auto or API (default Off). Preferences are plain `UserDefaults` keys (`usageDisplayMode`, `claudeUsageDisplayMode`, `cursorMenuBarLane`, `toastOnReset`, `confettiOnReset`).
+- Menu bar parts per provider: Codex and Claude pick 5-hour or Weekly; Cursor picks Off, Auto or API (default Off). Preferences are plain `UserDefaults` keys (`usageDisplayMode`, `claudeUsageDisplayMode`, `cursorMenuBarLane`, `toastOnReset`, `confettiOnReset`).
 
 ## Analytics
 

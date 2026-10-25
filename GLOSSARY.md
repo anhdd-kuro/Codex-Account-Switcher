@@ -25,7 +25,7 @@ Terms used in this repo and where they live. Read this before choosing where a c
 | Plan type | `plan_type` in the Codex usage response; the source of truth for `hasFiveHourLimit`. |
 | Premium seat | A Team or Business seat with larger limits ("Claude Team 5x", prolite). |
 | Reset credit | A redeemable token that resets Codex limits early; the Resets tab verifies redemption. |
-| Cursor lane | One of Cursor's three monthly meters: Plan (total), Auto, API. All share the billing-cycle reset. |
+| Cursor lane | One of Cursor's three monthly meters: Auto and API. All share the billing-cycle reset. |
 | Menu-bar lane | Which Cursor lane (or Off) the status item shows. |
 
 ## Analytics
@@ -49,7 +49,7 @@ Terms used in this repo and where they live. Read this before choosing where a c
 
 | Term | Meaning |
 |---|---|
-| Limit reset celebration | Toast plus confetti when a window that was at or below 20% remaining refills by 50 points or more. `LimitResetWatcher`, `Celebration`. |
+| Limit reset celebration | Toast plus fireworks when a window that was at or below 20% remaining refills by 50 points or more. `LimitResetWatcher`, `Celebration`. |
 | Near the limit | At or below 20% remaining at some point since the last reset. |
 | Auto-switch | Switches Codex and Claude accounts when remaining drops below a threshold. |
 | Auto-resume | Sends a prompt to continue the Codex task after a switch. |

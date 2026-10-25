@@ -609,7 +609,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             }
         }
         if let snapshot = cursor.state.snapshot {
-            for (name, used) in [("Plan", snapshot.planUsed), ("Auto", snapshot.autoUsed), ("API", snapshot.apiUsed)] {
+            for (name, used) in [("Auto", snapshot.autoUsed), ("API", snapshot.apiUsed)] {
                 if let used { limits.append(WatchedLimit(key: "cursor|\(name)", title: "Cursor \(name)", remaining: 100 - used)) }
             }
         }
@@ -1010,8 +1010,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         case .claudeUsageFiveHour:
             claudeUsageMode = .fiveHour
             refreshUI()
-        case .cursorBarOff, .cursorBarPlan, .cursorBarAuto, .cursorBarApi:
-            cursorLane = action == .cursorBarPlan ? .plan : action == .cursorBarAuto ? .auto : action == .cursorBarApi ? .api : .off
+        case .cursorBarOff, .cursorBarAuto, .cursorBarApi:
+            cursorLane = action == .cursorBarAuto ? .auto : action == .cursorBarApi ? .api : .off
             refreshUI()
         case .toggleToastOnReset:
             Celebration.toastEnabled.toggle()

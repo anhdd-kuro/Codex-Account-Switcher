@@ -20,7 +20,7 @@ enum Celebration {
         guard !resets.isEmpty, toastEnabled || confettiEnabled, let screen = NSScreen.main ?? NSScreen.screens.first else { return }
         let frame = screen.frame
         let center = NSPoint(x: anchor?.midX ?? frame.midX, y: frame.maxY - 28)
-        if confettiEnabled { show(confetti(on: screen, from: center), lifetime: 4.5) }
+        if confettiEnabled { show(fireworks(on: screen, from: center), lifetime: 4.5) }
         if toastEnabled {
             let text = resets.count == 1 ? "\(resets[0].title) limit reset" : "\(resets.count) limits reset"
             show(toast(text, near: center, in: frame), lifetime: 4)
@@ -54,44 +54,50 @@ enum Celebration {
         NSColor(srgbRed: 0.63, green: 0.55, blue: 0.78, alpha: 1), NSColor(srgbRed: 0.80, green: 0.46, blue: 0.46, alpha: 1)
     ]
 
-    private static func particle(_ color: NSColor, size: CGFloat) -> CGImage? {
-        let image = NSImage(size: NSSize(width: size, height: size * 0.6), flipped: false) { rect in
+    private static func spark(_ color: NSColor, diameter: CGFloat) -> CGImage? {
+        let image = NSImage(size: NSSize(width: diameter, height: diameter), flipped: false) { rect in
             color.setFill()
-            NSBezierPath(roundedRect: rect, xRadius: 1.5, yRadius: 1.5).fill()
+            NSBezierPath(ovalIn: rect).fill()
             return true
         }
         return image.cgImage(forProposedRect: nil, context: nil, hints: nil)
     }
 
-    private static func confetti(on screen: NSScreen, from point: NSPoint) -> NSWindow {
+    /// A few soft firework bursts under the status item, staggered over about a second.
+    private static func fireworks(on screen: NSScreen, from point: NSPoint) -> NSWindow {
         let window = overlay(screen.frame)
         let view = NSView(frame: NSRect(origin: .zero, size: screen.frame.size))
         view.wantsLayer = true
-        let emitter = CAEmitterLayer()
-        emitter.emitterPosition = CGPoint(x: point.x - screen.frame.minX, y: point.y - screen.frame.minY)
-        emitter.emitterShape = .point
-        emitter.renderMode = .oldestFirst
-        emitter.emitterCells = palette.compactMap { color in
-            guard let image = particle(color, size: 12) else { return nil }
-            let cell = CAEmitterCell()
-            cell.contents = image
-            cell.birthRate = 40
-            cell.lifetime = 3.6
-            cell.velocity = 420
-            cell.velocityRange = 160
-            cell.emissionLongitude = -.pi / 2
-            cell.emissionRange = .pi / 1.3
-            cell.yAcceleration = -520
-            cell.spin = 4
-            cell.spinRange = 8
-            cell.scale = 0.9
-            cell.scaleRange = 0.5
-            cell.alphaSpeed = -0.28
-            return cell
+        let bursts: [(dx: CGFloat, drop: CGFloat, delay: TimeInterval)] = [(-150, 170, 0), (130, 230, 0.35), (-20, 130, 0.7), (-260, 260, 1.0), (240, 150, 1.25)]
+        for (index, burst) in bursts.enumerated() {
+            let color = palette[index % palette.count]
+            let center = CGPoint(x: min(max(point.x + burst.dx, screen.frame.minX + 60), screen.frame.maxX - 60) - screen.frame.minX,
+                                 y: point.y - burst.drop - screen.frame.minY)
+            DispatchQueue.main.asyncAfter(deadline: .now() + burst.delay) {
+                let emitter = CAEmitterLayer()
+                emitter.emitterPosition = center
+                emitter.emitterShape = .point
+                emitter.renderMode = .additive
+                emitter.emitterCells = [(5, 150, 1.1), (3, 90, 0.9)].compactMap { diameter, velocity, lifetime in
+                    guard let image = spark(color, diameter: CGFloat(diameter)) else { return nil }
+                    let cell = CAEmitterCell()
+                    cell.contents = image
+                    cell.birthRate = 120
+                    cell.lifetime = Float(lifetime)
+                    cell.velocity = CGFloat(velocity)
+                    cell.velocityRange = CGFloat(velocity) * 0.35
+                    cell.emissionRange = .pi * 2
+                    cell.yAcceleration = -110
+                    cell.alphaSpeed = -0.85
+                    cell.scaleSpeed = -0.25
+                    return cell
+                }
+                view.layer?.addSublayer(emitter)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { emitter.birthRate = 0 }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { emitter.removeFromSuperlayer() }
+            }
         }
-        view.layer?.addSublayer(emitter)
         window.contentView = view
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { emitter.birthRate = 0 }
         return window
     }
 
