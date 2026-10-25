@@ -937,18 +937,27 @@ final class AccountSwitcherPanelView: NSView {
     }
 
     private func menuBarPreviewRow(theme: PanelTheme) -> SettingsRow {
-        SettingsRow(height: 40) { [weak self] row, width in
-            guard let self else { return }
+        let compact = toolbarDisplayStyle == .compact
+        let title = MenuBarGlyph.usageTitle(menuBarPreview, fontSize: compact ? 11 : 12.5, compact: compact, textColor: theme.primaryText, lowColor: theme.text(.red), separatorColor: theme.secondaryText)
+        let text = NSTextField(labelWithAttributedString: title.length == 0 ? NSAttributedString(string: "–") : title)
+        text.sizeToFit()
+        let chipWidth = text.frame.width + 20
+        let chipHeight = max(24, text.frame.height + 8)
+        let labelWidth: CGFloat = 70
+        // The label and chip share a line only when both fit; otherwise the chip drops below the label.
+        let stacked = chipWidth + labelWidth + 36 > contentWidth
+        return SettingsRow(height: stacked ? 28 + chipHeight + 8 : max(40, chipHeight + 16)) { row, width in
             let label = makeLabel("Preview", size: 12.5, weight: .medium, color: theme.primaryText)
-            row.place(label, x: 12, y: (40 - label.frame.height) / 2, width: 120)
-
-            let compact = self.toolbarDisplayStyle == .compact
-            let title = MenuBarGlyph.usageTitle(self.menuBarPreview, fontSize: compact ? 11 : 12.5, compact: compact, textColor: theme.primaryText, lowColor: theme.text(.red), separatorColor: theme.secondaryText)
-            let text = NSTextField(labelWithAttributedString: title.length == 0 ? NSAttributedString(string: "–") : title)
-            text.sizeToFit()
-            let chipWidth = text.frame.width + 20
-            let chip = TileView(frame: NSRect(x: width - 12 - chipWidth, y: 8, width: chipWidth, height: 24), fill: theme.isDark ? NSColor.black.withAlphaComponent(0.30) : NSColor.black.withAlphaComponent(0.07), cornerRadius: 6)
-            chip.place(text, x: 10, y: (24 - text.frame.height) / 2)
+            let chipY: CGFloat
+            if stacked {
+                row.place(label, x: 12, y: 8, width: labelWidth)
+                chipY = 28
+            } else {
+                row.place(label, x: 12, y: (row.frame.height - label.frame.height) / 2, width: labelWidth)
+                chipY = (row.frame.height - chipHeight) / 2
+            }
+            let chip = TileView(frame: NSRect(x: max(12, width - 12 - chipWidth), y: chipY, width: chipWidth, height: chipHeight), fill: theme.isDark ? NSColor.black.withAlphaComponent(0.30) : NSColor.black.withAlphaComponent(0.07), cornerRadius: 6)
+            chip.place(text, x: 10, y: (chipHeight - text.frame.height) / 2)
             row.addSubview(chip)
         }
     }
