@@ -758,7 +758,7 @@ enum MenuBarGlyph {
         let text: String
         let isLow: Bool
         var reset: String? = nil
-        var lines: [String]? = nil
+        var lines: [[String]]? = nil
     }
 
     /// Time until `date`: `45m`, `4h`, `3d 4h`.
@@ -772,16 +772,20 @@ enum MenuBarGlyph {
         return hours > 0 ? "\(days)d \(hours)h" : "\(days)d"
     }
 
-    /// Two short lines stacked to fit the menu bar height, e.g. `Auto 97%` over `API 61%`.
-    static func stackedImage(_ lines: [String], fontSize: CGFloat, color: NSColor) -> NSImage {
+    /// Label/value rows stacked to fit the menu bar height, labels left and values right-aligned: `Auto  97%` over `API   61%`.
+    static func stackedImage(_ rows: [[String]], fontSize: CGFloat, color: NSColor) -> NSImage {
         let font = NSFont.monospacedDigitSystemFont(ofSize: max(8, fontSize - 3.5), weight: .semibold)
         let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color]
-        let width = ceil(lines.map { ($0 as NSString).size(withAttributes: attributes).width }.max() ?? 0)
+        func width(_ column: Int) -> CGFloat { ceil(rows.map { ($0[column] as NSString).size(withAttributes: attributes).width }.max() ?? 0) }
+        let labelWidth = width(0), valueWidth = width(1), gap: CGFloat = 5
         let lineHeight = ceil(font.ascender - font.descender)
-        let size = NSSize(width: width, height: lineHeight * CGFloat(lines.count))
+        let size = NSSize(width: labelWidth + gap + valueWidth, height: lineHeight * CGFloat(rows.count))
         return NSImage(size: size, flipped: true) { _ in
-            for (index, line) in lines.enumerated() {
-                (line as NSString).draw(at: NSPoint(x: 0, y: CGFloat(index) * lineHeight), withAttributes: attributes)
+            for (index, row) in rows.enumerated() {
+                let y = CGFloat(index) * lineHeight
+                (row[0] as NSString).draw(at: NSPoint(x: 0, y: y), withAttributes: attributes)
+                let value = row[1] as NSString
+                value.draw(at: NSPoint(x: size.width - value.size(withAttributes: attributes).width, y: y), withAttributes: attributes)
             }
             return true
         }

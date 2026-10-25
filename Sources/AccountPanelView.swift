@@ -848,7 +848,9 @@ final class AccountSwitcherPanelView: NSView {
 
         let cursorRow: [SettingsRow] = cursor.isInstalled ? [segmentedRow("Cursor", options: [
             ("Off", cursorLane == .off, .cursorBarOff),
-            ("Show", cursorLane == .on, .cursorBarOn)
+            ("Auto", cursorLane == .auto, .cursorBarAuto),
+            ("API", cursorLane == .api, .cursorBarApi),
+            ("Both", cursorLane == .both, .cursorBarBoth)
         ], theme: theme)] : []
         y = addSection("Menu bar", rows: [
             segmentedRow("Codex", options: [

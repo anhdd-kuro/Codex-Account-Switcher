@@ -1010,8 +1010,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         case .claudeUsageFiveHour:
             claudeUsageMode = .fiveHour
             refreshUI()
-        case .cursorBarOff, .cursorBarOn:
-            cursorLane = action == .cursorBarOn ? .on : .off
+        case .cursorBarOff, .cursorBarAuto, .cursorBarApi, .cursorBarBoth:
+            cursorLane = action == .cursorBarAuto ? .auto : action == .cursorBarApi ? .api : action == .cursorBarBoth ? .both : .off
             refreshUI()
         case .testCelebration:
             Celebration.celebrate([WatchedLimit(key: "test", title: "Claude 5h", remaining: 100)], anchor: statusItem.button?.window?.frame)
@@ -1570,9 +1570,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             let reset = account.needsLogin ? nil : MenuBarGlyph.relativeReset(claudeUsageMode == .fiveHour && account.hasFiveHourLimit ? account.fiveHourResetAt : account.weeklyResetAt)
             parts.append((.init(logo: "logo-claude", text: account.needsLogin ? "Sign in" : remainingPercentText(fromUsed: percent), isLow: account.needsLogin || (percent ?? 100) < 10, reset: reset), "Claude \(account.title) \(remainingPercentText(fromUsed: percent)) left"))
         }
-        if cursorLane == .on, let snapshot = cursor.state.snapshot, let auto = snapshot.autoUsed, let api = snapshot.apiUsed {
-            let lines = ["Auto \(100 - auto)%", "API \(100 - api)%"]
-            parts.append((.init(logo: "logo-cursor", text: lines.joined(separator: " "), isLow: min(100 - auto, 100 - api) < 10, reset: nil, lines: lines), "Cursor \(lines.joined(separator: ", ")) left"))
+        if cursorLane != .off, let snapshot = cursor.state.snapshot {
+            let auto = snapshot.autoUsed.map { 100 - $0 }
+            let api = snapshot.apiUsed.map { 100 - $0 }
+            switch cursorLane {
+            case .both:
+                if let auto, let api {
+                    parts.append((.init(logo: "logo-cursor", text: "\(auto)% \(api)%", isLow: min(auto, api) < 10, lines: [["Auto", "\(auto)%"], ["API", "\(api)%"]]), "Cursor Auto \(auto)%, API \(api)% left"))
+                }
+            case .auto, .api:
+                let isAuto = cursorLane == .auto
+                if let left = isAuto ? auto : api {
+                    parts.append((.init(logo: "logo-cursor", text: "\(left)%", isLow: left < 10, reset: MenuBarGlyph.relativeReset(snapshot.resetAt)), "Cursor \(isAuto ? "Auto" : "API") \(left)% left"))
+                }
+            case .off:
+                break
+            }
         }
         return parts
     }

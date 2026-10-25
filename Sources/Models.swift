@@ -196,7 +196,9 @@ enum SettingsPanelAction: String {
     case claudeUsageWeekly
     case claudeUsageFiveHour
     case cursorBarOff
-    case cursorBarOn
+    case cursorBarAuto
+    case cursorBarApi
+    case cursorBarBoth
     case styleDetailed
     case styleCompact
     case toggleLaunchAtLogin

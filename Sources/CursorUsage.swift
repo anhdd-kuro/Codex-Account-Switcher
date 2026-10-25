@@ -12,7 +12,7 @@ struct CursorUsageSnapshot: Equatable {
 }
 
 enum CursorMenuBarLane: String {
-    case off, on
+    case off, auto, api, both
 }
 
 struct CursorUsageState: Equatable {
