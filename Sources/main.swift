@@ -745,7 +745,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             "\(confirmBeforeSwitching)|\(armedSwitchEmail ?? "")",
             "\(launchAtLoginEnabled())|\(remindersEnabled)|\(reminderThreshold)",
             "\(autoSwitchMode.rawValue)|\(autoSwitchThreshold)|\(autoResumeMode.rawValue)",
-            "\(Celebration.toastEnabled)|\(Celebration.confettiEnabled)",
+            "\(Celebration.toastEnabled)|\(Celebration.confettiEnabled)|\(SpaceRestorer.isEnabled)",
             "\(usageMode.rawValue)|\(claudeUsageMode.rawValue)|\(cursorLane.rawValue)|\(toolbarDisplayStyle.rawValue)|\(activeRefreshInterval)|\(idleRefreshInterval)",
             UserDefaults.standard.string(forKey: selectedRouteBProfileDefaultsKey) ?? "",
             accountLabels().sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: ","),
@@ -1027,6 +1027,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             refreshUI()
         case .testCelebration:
             Celebration.celebrate([WatchedLimit(key: "test", title: "Claude 5h", remaining: 100)], anchor: statusItem.button?.window?.frame)
+        case .toggleReopenOnSameDesktop:
+            SpaceRestorer.isEnabled.toggle()
+            refreshUI()
         case .toggleToastOnReset:
             Celebration.toastEnabled.toggle()
             refreshUI()

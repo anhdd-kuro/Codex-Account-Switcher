@@ -88,4 +88,4 @@ Claude fork notes:
 
 ## Desktop (Space) restore on relaunch
 
-`restartCodexApp` remembers the Space of the Codex window (`SpaceRestorer`, private CGS calls), switches that display to it while `open` launches the app, then switches back. macOS blocks moving another process's windows between Spaces (`CGSMoveWindowsToManagedSpace` is a no-op), so switching the visible Space is the only working route.
+`restartCodexApp` remembers the Space of the Codex window (`SpaceRestorer`, private CGS calls), switches that display to it while `open` launches the app, then switches back. Setting "Reopen on same desktop" (`reopenOnSameDesktop`, default on) turns it off. macOS blocks moving another process's windows between Spaces (`CGSMoveWindowsToManagedSpace` is a no-op), so switching the visible Space is the only working route.

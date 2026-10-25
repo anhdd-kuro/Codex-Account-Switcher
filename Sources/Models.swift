@@ -215,6 +215,7 @@ enum SettingsPanelAction: String {
     case editAutoResume
     case toggleConfirmSwitch
     case toggleToastOnReset
+    case toggleReopenOnSameDesktop
     case testCelebration
     case toggleConfettiOnReset
     case toggleProtectCodex

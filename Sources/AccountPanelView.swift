@@ -878,6 +878,7 @@ final class AccountSwitcherPanelView: NSView {
             toggleRow("Usage reminder", detail: "Alert when Codex or Claude runs low", isOn: remindersEnabled, action: .toggleUsageReminder, popup: ("at \(reminderThreshold)%", .editUsageReminder), theme: theme),
             toggleRow("Auto-switch", detail: "Switch Codex and Claude when low", isOn: autoSwitchMode != .off, action: .toggleAutoSwitch, popup: (autoSwitchPopupText(), .editAutoSwitch), theme: theme),
             popupRow("Auto-resume", detail: "Continue the Codex task after a switch", value: autoResumeText(), action: .editAutoResume, theme: theme),
+            toggleRow("Reopen on same desktop", detail: "Relaunch Codex on the desktop it was on, not the current one", isOn: SpaceRestorer.isEnabled, action: .toggleReopenOnSameDesktop, theme: theme),
             toggleRow("Toast on limit reset", detail: "Show a brief message when a limit resets", isOn: Celebration.toastEnabled, action: .toggleToastOnReset, theme: theme),
             toggleRow("Fireworks on limit reset", detail: "Celebrate when a limit refills after you were near it", isOn: Celebration.confettiEnabled, action: .toggleConfettiOnReset, theme: theme),
             popupRow("Test celebration", detail: "Play the toast and fireworks now", value: "Play", action: .testCelebration, theme: theme),

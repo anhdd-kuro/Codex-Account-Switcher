@@ -11,6 +11,14 @@ import Cocoa
 /// the remembered Space is switched to it while the app launches (its first window opens on the
 /// visible Space), then switched back to what the user was looking at.
 struct SpaceRestorer {
+    static let defaultsKey = "reopenOnSameDesktop"
+
+    /// On (default): relaunch on the desktop the app was on. Off: it opens on the desktop in front.
+    static var isEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: defaultsKey) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: defaultsKey) }
+    }
+
     private let connection = CGSMainConnectionID()
     private let spaceID: Int
     private let displayID: String
@@ -18,6 +26,7 @@ struct SpaceRestorer {
 
     /// Remembers the Space of the largest window owned by `pids`; nil if none is found.
     init?(windowsOf pids: Set<Int32>) {
+        guard Self.isEnabled else { return nil }
         let connection = self.connection
         let windows = (CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]]) ?? []
         let remembered: (area: Double, space: Int)? = windows.compactMap { window -> (Double, Int)? in
