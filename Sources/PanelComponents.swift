@@ -684,7 +684,7 @@ final class UsageBarRowView: NSView {
         let resetAttributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: theme.tertiaryText]
         let textY = (bounds.height - font.boundingRectForFont.height) / 2 + 1
         let labelWidth: CGFloat = 26
-        let resetWidth: CGFloat = 34
+        let resetWidth: CGFloat = 50
         let valueWidth: CGFloat = 40
 
         (label as NSString).draw(at: NSPoint(x: 0, y: textY), withAttributes: labelAttributes)
@@ -760,13 +760,15 @@ enum MenuBarGlyph {
         var reset: String? = nil
     }
 
-    /// Time until `date` in its largest unit: `45m`, `4h`, `3d`.
+    /// Time until `date`: `45m`, `4h`, `3d 4h`.
     static func relativeReset(_ date: Date?) -> String? {
         guard let date else { return nil }
         let seconds = max(0, date.timeIntervalSinceNow)
         if seconds < 3600 { return "\(max(1, Int(seconds / 60)))m" }
         if seconds < 86_400 { return "\(Int(seconds / 3600))h" }
-        return "\(Int(seconds / 86_400))d"
+        let days = Int(seconds / 86_400)
+        let hours = Int(seconds.truncatingRemainder(dividingBy: 86_400) / 3600)
+        return hours > 0 ? "\(days)d \(hours)h" : "\(days)d"
     }
 
     /// `[logo] 100% · 4h  |  [logo] 95% · 3d`, shared by the status item and its preview.
