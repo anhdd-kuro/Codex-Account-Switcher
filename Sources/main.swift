@@ -1576,7 +1576,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 let reset = MenuBarGlyph.relativeReset(usageMode == .fiveHour && account.hasFiveHourLimit ? snapshot?.fiveHour.resetAt : snapshot?.weekly.resetAt)
                 if usageMode == .both, account.hasFiveHourLimit {
                     let five = account.fiveHourUsedPercent, week = account.weeklyUsedPercent
-                    parts.append((.init(logo: "logo-openai", text: "\(remainingPercentText(fromUsed: five)) \(remainingPercentText(fromUsed: week))", isLow: min(five ?? 100, week ?? 100) < 10, lines: [["5h", remainingPercentText(fromUsed: five)], ["7d", remainingPercentText(fromUsed: week)]]), "Codex 5-hour \(remainingPercentText(fromUsed: five)), weekly \(remainingPercentText(fromUsed: week)) left"))
+                    parts.append((.init(logo: "logo-openai", text: "\(remainingPercentText(fromUsed: five)) \(remainingPercentText(fromUsed: week))", isLow: min(five ?? 100, week ?? 100) < 10, lines: [["5h", remainingPercentText(fromUsed: five), MenuBarGlyph.relativeReset(snapshot?.fiveHour.resetAt) ?? ""], ["7d", remainingPercentText(fromUsed: week), MenuBarGlyph.relativeReset(snapshot?.weekly.resetAt) ?? ""]]), "Codex 5-hour \(remainingPercentText(fromUsed: five)), weekly \(remainingPercentText(fromUsed: week)) left"))
                 } else {
                     parts.append((.init(logo: "logo-openai", text: remainingPercentText(fromUsed: percent), isLow: (percent ?? 100) < 10, reset: reset), "Codex \(remainingPercentText(fromUsed: percent)) left"))
                 }
@@ -1587,7 +1587,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             let reset = account.needsLogin ? nil : MenuBarGlyph.relativeReset(claudeUsageMode == .fiveHour && account.hasFiveHourLimit ? account.fiveHourResetAt : account.weeklyResetAt)
             if claudeUsageMode == .both, account.hasFiveHourLimit, !account.needsLogin {
                 let five = account.fiveHourRemaining, week = account.weeklyRemaining
-                parts.append((.init(logo: "logo-claude", text: "\(remainingPercentText(fromUsed: five)) \(remainingPercentText(fromUsed: week))", isLow: min(five ?? 100, week ?? 100) < 10, lines: [["5h", remainingPercentText(fromUsed: five)], ["7d", remainingPercentText(fromUsed: week)]]), "Claude \(account.title) 5-hour \(remainingPercentText(fromUsed: five)), weekly \(remainingPercentText(fromUsed: week)) left"))
+                parts.append((.init(logo: "logo-claude", text: "\(remainingPercentText(fromUsed: five)) \(remainingPercentText(fromUsed: week))", isLow: min(five ?? 100, week ?? 100) < 10, lines: [["5h", remainingPercentText(fromUsed: five), MenuBarGlyph.relativeReset(account.fiveHourResetAt) ?? ""], ["7d", remainingPercentText(fromUsed: week), MenuBarGlyph.relativeReset(account.weeklyResetAt) ?? ""]]), "Claude \(account.title) 5-hour \(remainingPercentText(fromUsed: five)), weekly \(remainingPercentText(fromUsed: week)) left"))
             } else {
                 parts.append((.init(logo: "logo-claude", text: account.needsLogin ? "Sign in" : remainingPercentText(fromUsed: percent), isLow: account.needsLogin || (percent ?? 100) < 10, reset: reset), "Claude \(account.title) \(remainingPercentText(fromUsed: percent)) left"))
             }
@@ -1598,7 +1598,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             switch cursorLane {
             case .both:
                 if let auto, let api {
-                    parts.append((.init(logo: "logo-cursor", text: "\(auto)% \(api)%", isLow: min(auto, api) < 10, lines: [["Auto", "\(auto)%"], ["API", "\(api)%"]]), "Cursor Auto \(auto)%, API \(api)% left"))
+                    parts.append((.init(logo: "logo-cursor", text: "\(auto)% \(api)%", isLow: min(auto, api) < 10, lines: [["Auto", "\(auto)%", MenuBarGlyph.relativeReset(snapshot.resetAt) ?? ""], ["API", "\(api)%", MenuBarGlyph.relativeReset(snapshot.resetAt) ?? ""]]), "Cursor Auto \(auto)%, API \(api)% left"))
                 }
             case .auto, .api:
                 let isAuto = cursorLane == .auto
@@ -1714,7 +1714,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         if let resetStatusText {
             return "reset|\(resetStatusText)|\(statusSpinnerFrame.map { String($0 % 12) } ?? "-")|\(toolbarDisplayStyle.rawValue)"
         }
-        return menuBarUsageParts().map { "\($0.part.logo)|\($0.part.text)|\($0.part.isLow)|\($0.part.reset ?? "")" }.joined(separator: "||") + "|\(toolbarDisplayStyle.rawValue)"
+        return menuBarUsageParts().map { "\($0.part.logo)|\($0.part.text)|\($0.part.isLow)|\($0.part.reset ?? "")|\($0.part.lines?.map { $0.joined(separator: ",") }.joined(separator: ";") ?? "")" }.joined(separator: "||") + "|\(toolbarDisplayStyle.rawValue)"
     }
 
     private func setResetStatus(_ text: String?) {

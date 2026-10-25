@@ -772,20 +772,29 @@ enum MenuBarGlyph {
         return hours > 0 ? "\(days)d \(hours)h" : "\(days)d"
     }
 
-    /// Label/value rows stacked to fit the menu bar height, labels left and values right-aligned: `Auto  97%` over `API   61%`.
-    static func stackedImage(_ rows: [[String]], fontSize: CGFloat, color: NSColor) -> NSImage {
+    /// Rows of label, value and optional reset countdown, stacked to fit the menu bar height with each column aligned:
+    /// `5h  81% · 2h` over `7d  66% · 3d 4h`.
+    static func stackedImage(_ rows: [[String]], fontSize: CGFloat, color: NSColor, dimColor: NSColor) -> NSImage {
         let font = NSFont.monospacedDigitSystemFont(ofSize: max(8, fontSize - 3.5), weight: .semibold)
         let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color]
-        func width(_ column: Int) -> CGFloat { ceil(rows.map { ($0[column] as NSString).size(withAttributes: attributes).width }.max() ?? 0) }
-        let labelWidth = width(0), valueWidth = width(1), gap: CGFloat = 5
+        let dimAttributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: dimColor]
+        func width(_ column: Int) -> CGFloat {
+            ceil(rows.map { column < $0.count ? ($0[column] as NSString).size(withAttributes: attributes).width : 0 }.max() ?? 0)
+        }
+        let labelWidth = width(0), valueWidth = width(1), resetWidth = width(2), gap: CGFloat = 5
         let lineHeight = ceil(font.ascender - font.descender)
-        let size = NSSize(width: labelWidth + gap + valueWidth, height: lineHeight * CGFloat(rows.count))
+        let total = labelWidth + gap + valueWidth + (resetWidth > 0 ? gap + resetWidth : 0)
+        let size = NSSize(width: total, height: lineHeight * CGFloat(rows.count))
         return NSImage(size: size, flipped: true) { _ in
             for (index, row) in rows.enumerated() {
                 let y = CGFloat(index) * lineHeight
                 (row[0] as NSString).draw(at: NSPoint(x: 0, y: y), withAttributes: attributes)
                 let value = row[1] as NSString
-                value.draw(at: NSPoint(x: size.width - value.size(withAttributes: attributes).width, y: y), withAttributes: attributes)
+                value.draw(at: NSPoint(x: labelWidth + gap + valueWidth - value.size(withAttributes: attributes).width, y: y), withAttributes: attributes)
+                if row.count > 2 {
+                    let reset = row[2] as NSString
+                    reset.draw(at: NSPoint(x: total - reset.size(withAttributes: dimAttributes).width, y: y), withAttributes: dimAttributes)
+                }
             }
             return true
         }
@@ -807,7 +816,7 @@ enum MenuBarGlyph {
                 title.append(NSAttributedString(string: " ", attributes: [.font: font, .kern: compact ? 1 : 3]))
             }
             if let lines = part.lines {
-                let stacked = stackedImage(lines, fontSize: fontSize, color: part.isLow ? lowColor : textColor)
+                let stacked = stackedImage(lines, fontSize: fontSize, color: part.isLow ? lowColor : textColor, dimColor: separatorColor)
                 let attachment = NSTextAttachment()
                 attachment.image = stacked
                 attachment.bounds = NSRect(x: 0, y: (font.capHeight - stacked.size.height) / 2, width: stacked.size.width, height: stacked.size.height)
