@@ -804,7 +804,7 @@ enum MenuBarGlyph {
                 attachment.image = image
                 attachment.bounds = NSRect(x: 0, y: (font.capHeight - image.size.height) / 2, width: image.size.width, height: image.size.height)
                 title.append(NSAttributedString(attachment: attachment))
-                title.append(NSAttributedString(string: " ", attributes: [.font: font, .kern: compact ? 0 : 1.5]))
+                title.append(NSAttributedString(string: " ", attributes: [.font: font, .kern: compact ? 1 : 3]))
             }
             if let lines = part.lines {
                 let stacked = stackedImage(lines, fontSize: fontSize, color: part.isLow ? lowColor : textColor)

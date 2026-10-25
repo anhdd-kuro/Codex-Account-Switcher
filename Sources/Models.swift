@@ -150,6 +150,8 @@ struct ResetVerificationOutcome {
 enum UsageDisplayMode: String {
     case fiveHour
     case weekly
+    case both
+    case off
 }
 
 enum ToolbarDisplayStyle: String {
@@ -193,8 +195,12 @@ enum SettingsPanelAction: String {
     case removeAccount
     case usageWeekly
     case usageFiveHour
+    case usageBoth
+    case usageOff
     case claudeUsageWeekly
     case claudeUsageFiveHour
+    case claudeUsageBoth
+    case claudeUsageOff
     case cursorBarOff
     case cursorBarAuto
     case cursorBarApi

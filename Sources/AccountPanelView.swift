@@ -854,12 +854,16 @@ final class AccountSwitcherPanelView: NSView {
         ], theme: theme)] : []
         y = addSection("Menu bar", rows: [
             segmentedRow("Codex", options: [
+                ("Off", usageMode == .off, .usageOff),
                 ("5-hour", usageMode == .fiveHour, .usageFiveHour),
-                ("Weekly", usageMode == .weekly, .usageWeekly)
+                ("Weekly", usageMode == .weekly, .usageWeekly),
+                ("Both", usageMode == .both, .usageBoth)
             ], theme: theme),
             segmentedRow("Claude", options: [
+                ("Off", claudeUsageMode == .off, .claudeUsageOff),
                 ("5-hour", claudeUsageMode == .fiveHour, .claudeUsageFiveHour),
-                ("Weekly", claudeUsageMode == .weekly, .claudeUsageWeekly)
+                ("Weekly", claudeUsageMode == .weekly, .claudeUsageWeekly),
+                ("Both", claudeUsageMode == .both, .claudeUsageBoth)
             ], theme: theme),
         ] + cursorRow + [
             segmentedRow("Size", options: [

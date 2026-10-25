@@ -1010,6 +1010,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         case .claudeUsageFiveHour:
             claudeUsageMode = .fiveHour
             refreshUI()
+        case .usageBoth:
+            usageMode = .both
+            refreshUI()
+        case .usageOff:
+            usageMode = .off
+            refreshUI()
+        case .claudeUsageBoth:
+            claudeUsageMode = .both
+            refreshUI()
+        case .claudeUsageOff:
+            claudeUsageMode = .off
+            refreshUI()
         case .cursorBarOff, .cursorBarAuto, .cursorBarApi, .cursorBarBoth:
             cursorLane = action == .cursorBarAuto ? .auto : action == .cursorBarApi ? .api : action == .cursorBarBoth ? .both : .off
             refreshUI()
@@ -1555,20 +1567,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     private func menuBarUsageParts() -> [(part: MenuBarGlyph.UsagePart, spoken: String)] {
         var parts: [(part: MenuBarGlyph.UsagePart, spoken: String)] = []
-        if let account = toolbarStatusAccounts().first {
+        if usageMode != .off, let account = toolbarStatusAccounts().first {
             if accountNeedsLogin(account) {
                 parts.append((.init(logo: "logo-openai", text: "Sign in", isLow: true), "Codex needs a fresh sign-in"))
             } else {
                 let percent = toolbarUsagePercent(for: account)
                 let snapshot = directUsageSnapshotsByEmail[account.email]
                 let reset = MenuBarGlyph.relativeReset(usageMode == .fiveHour && account.hasFiveHourLimit ? snapshot?.fiveHour.resetAt : snapshot?.weekly.resetAt)
-                parts.append((.init(logo: "logo-openai", text: remainingPercentText(fromUsed: percent), isLow: (percent ?? 100) < 10, reset: reset), "Codex \(remainingPercentText(fromUsed: percent)) left"))
+                if usageMode == .both, account.hasFiveHourLimit {
+                    let five = account.fiveHourUsedPercent, week = account.weeklyUsedPercent
+                    parts.append((.init(logo: "logo-openai", text: "\(remainingPercentText(fromUsed: five)) \(remainingPercentText(fromUsed: week))", isLow: min(five ?? 100, week ?? 100) < 10, lines: [["5h", remainingPercentText(fromUsed: five)], ["7d", remainingPercentText(fromUsed: week)]]), "Codex 5-hour \(remainingPercentText(fromUsed: five)), weekly \(remainingPercentText(fromUsed: week)) left"))
+                } else {
+                    parts.append((.init(logo: "logo-openai", text: remainingPercentText(fromUsed: percent), isLow: (percent ?? 100) < 10, reset: reset), "Codex \(remainingPercentText(fromUsed: percent)) left"))
+                }
             }
         }
-        if let account = claude.active {
+        if claudeUsageMode != .off, let account = claude.active {
             let percent = claudeToolbarPercent(account)
             let reset = account.needsLogin ? nil : MenuBarGlyph.relativeReset(claudeUsageMode == .fiveHour && account.hasFiveHourLimit ? account.fiveHourResetAt : account.weeklyResetAt)
-            parts.append((.init(logo: "logo-claude", text: account.needsLogin ? "Sign in" : remainingPercentText(fromUsed: percent), isLow: account.needsLogin || (percent ?? 100) < 10, reset: reset), "Claude \(account.title) \(remainingPercentText(fromUsed: percent)) left"))
+            if claudeUsageMode == .both, account.hasFiveHourLimit, !account.needsLogin {
+                let five = account.fiveHourRemaining, week = account.weeklyRemaining
+                parts.append((.init(logo: "logo-claude", text: "\(remainingPercentText(fromUsed: five)) \(remainingPercentText(fromUsed: week))", isLow: min(five ?? 100, week ?? 100) < 10, lines: [["5h", remainingPercentText(fromUsed: five)], ["7d", remainingPercentText(fromUsed: week)]]), "Claude \(account.title) 5-hour \(remainingPercentText(fromUsed: five)), weekly \(remainingPercentText(fromUsed: week)) left"))
+            } else {
+                parts.append((.init(logo: "logo-claude", text: account.needsLogin ? "Sign in" : remainingPercentText(fromUsed: percent), isLow: account.needsLogin || (percent ?? 100) < 10, reset: reset), "Claude \(account.title) \(remainingPercentText(fromUsed: percent)) left"))
+            }
         }
         if cursorLane != .off, let snapshot = cursor.state.snapshot {
             let auto = snapshot.autoUsed.map { 100 - $0 }
@@ -1705,7 +1727,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         switch account.hasFiveHourLimit ? usageMode : .weekly {
         case .fiveHour:
             return account.fiveHourUsedPercent
-        case .weekly:
+        case .weekly, .both, .off:
             return account.weeklyUsedPercent
         }
     }
