@@ -11,6 +11,19 @@ struct CursorUsageSnapshot: Equatable {
     let resetAt: Date?
 }
 
+enum CursorMenuBarLane: String {
+    case off, plan, auto, api
+
+    func used(in snapshot: CursorUsageSnapshot) -> Int? {
+        switch self {
+        case .off: return nil
+        case .plan: return snapshot.planUsed
+        case .auto: return snapshot.autoUsed
+        case .api: return snapshot.apiUsed
+        }
+    }
+}
+
 struct CursorUsageState: Equatable {
     var isInstalled = false
     var snapshot: CursorUsageSnapshot?

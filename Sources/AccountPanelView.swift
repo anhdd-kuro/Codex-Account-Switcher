@@ -44,6 +44,7 @@ final class AccountSwitcherPanelView: NSView {
     private let menuBarPreview: [MenuBarGlyph.UsagePart]
     private let analytics: AnalyticsPanelModel
     private let cursor: CursorUsageState
+    private let cursorLane: CursorMenuBarLane
     private static var analyticsBreakdown: AnalyticsBreakdownMode = .daily
 
     static let panelWidth: CGFloat = 452
@@ -91,6 +92,7 @@ final class AccountSwitcherPanelView: NSView {
         claude: ClaudePanelModel = .empty,
         codexUsageByEmail: [String: DirectUsageSnapshot] = [:],
         cursor: CursorUsageState = CursorUsageState(),
+        cursorLane: CursorMenuBarLane = .off,
         menuBarPreview: [MenuBarGlyph.UsagePart] = [],
         analytics: AnalyticsPanelModel = .empty
     ) {
@@ -134,6 +136,7 @@ final class AccountSwitcherPanelView: NSView {
         self.menuBarPreview = menuBarPreview
         self.analytics = analytics
         self.cursor = cursor
+        self.cursorLane = cursorLane
         super.init(frame: NSRect(origin: .zero, size: Self.preferredSize(mode: mode, accountCount: accounts.count + claude.accounts.count)))
         wantsLayer = true
         build()
@@ -843,6 +846,12 @@ final class AccountSwitcherPanelView: NSView {
     private func buildSettingsBody(into body: NSView, theme: PanelTheme) -> CGFloat {
         var y: CGFloat = 0
 
+        let cursorRow: [SettingsRow] = cursor.isInstalled ? [segmentedRow("Cursor", options: [
+            ("Off", cursorLane == .off, .cursorBarOff),
+            ("Plan", cursorLane == .plan, .cursorBarPlan),
+            ("Auto", cursorLane == .auto, .cursorBarAuto),
+            ("API", cursorLane == .api, .cursorBarApi)
+        ], theme: theme)] : []
         y = addSection("Menu bar", rows: [
             segmentedRow("Codex", options: [
                 ("5-hour", usageMode == .fiveHour, .usageFiveHour),
@@ -852,6 +861,7 @@ final class AccountSwitcherPanelView: NSView {
                 ("5-hour", claudeUsageMode == .fiveHour, .claudeUsageFiveHour),
                 ("Weekly", claudeUsageMode == .weekly, .claudeUsageWeekly)
             ], theme: theme),
+        ] + cursorRow + [
             segmentedRow("Size", options: [
                 ("Large", toolbarDisplayStyle == .detailed, .styleDetailed),
                 ("Small", toolbarDisplayStyle == .compact, .styleCompact)

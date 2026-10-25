@@ -225,6 +225,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             UserDefaults.standard.set(newValue.rawValue, forKey: "claudeUsageDisplayMode")
         }
     }
+    private var cursorLane: CursorMenuBarLane {
+        get { CursorMenuBarLane(rawValue: UserDefaults.standard.string(forKey: "cursorMenuBarLane") ?? "") ?? .off }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: "cursorMenuBarLane") }
+    }
     private var toolbarDisplayStyle: ToolbarDisplayStyle {
         get {
             ToolbarDisplayStyle(rawValue: UserDefaults.standard.string(forKey: toolbarDisplayStyleDefaultsKey) ?? "") ?? .detailed
@@ -704,7 +708,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             "\(confirmBeforeSwitching)|\(armedSwitchEmail ?? "")",
             "\(launchAtLoginEnabled())|\(remindersEnabled)|\(reminderThreshold)",
             "\(autoSwitchMode.rawValue)|\(autoSwitchThreshold)|\(autoResumeMode.rawValue)",
-            "\(usageMode.rawValue)|\(claudeUsageMode.rawValue)|\(toolbarDisplayStyle.rawValue)|\(activeRefreshInterval)|\(idleRefreshInterval)",
+            "\(usageMode.rawValue)|\(claudeUsageMode.rawValue)|\(cursorLane.rawValue)|\(toolbarDisplayStyle.rawValue)|\(activeRefreshInterval)|\(idleRefreshInterval)",
             UserDefaults.standard.string(forKey: selectedRouteBProfileDefaultsKey) ?? "",
             accountLabels().sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: ","),
             health,
@@ -799,6 +803,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             ),
             codexUsageByEmail: directUsageSnapshotsByEmail,
             cursor: cursor.state,
+            cursorLane: cursorLane,
             menuBarPreview: menuBarUsageParts().map(\.part),
             analytics: AnalyticsPanelModel(
                 snapshot: analytics.snapshot,
@@ -966,6 +971,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             refreshUI()
         case .claudeUsageFiveHour:
             claudeUsageMode = .fiveHour
+            refreshUI()
+        case .cursorBarOff, .cursorBarPlan, .cursorBarAuto, .cursorBarApi:
+            cursorLane = action == .cursorBarPlan ? .plan : action == .cursorBarAuto ? .auto : action == .cursorBarApi ? .api : .off
             refreshUI()
         case .styleDetailed:
             toolbarDisplayStyle = .detailed
@@ -1515,6 +1523,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             let percent = claudeToolbarPercent(account)
             let reset = account.needsLogin ? nil : MenuBarGlyph.relativeReset(claudeUsageMode == .fiveHour && account.hasFiveHourLimit ? account.fiveHourResetAt : account.weeklyResetAt)
             parts.append((.init(logo: "logo-claude", text: account.needsLogin ? "Sign in" : remainingPercentText(fromUsed: percent), isLow: account.needsLogin || (percent ?? 100) < 10, reset: reset), "Claude \(account.title) \(remainingPercentText(fromUsed: percent)) left"))
+        }
+        if cursorLane != .off, let snapshot = cursor.state.snapshot, let used = cursorLane.used(in: snapshot) {
+            let text = remainingPercentText(fromUsed: used)
+            parts.append((.init(logo: "logo-cursor", text: text, isLow: 100 - used < 10, reset: MenuBarGlyph.relativeReset(snapshot.resetAt)), "Cursor \(cursorLane.rawValue) \(text) left"))
         }
         return parts
     }
