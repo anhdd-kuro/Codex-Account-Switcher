@@ -12,6 +12,7 @@ struct InfrastructureTests {
         try testComputerUsePluginDiscovery()
         try testBackupPruning()
         testProcessRunner()
+        testLimitResetWatcher()
 
         if failures.isEmpty {
             print("Infrastructure tests passed (\(assertionCount) assertions).")
@@ -22,6 +23,24 @@ struct InfrastructureTests {
             FileHandle.standardError.write(Data("FAIL: \(failure)\n".utf8))
         }
         exit(1)
+    }
+
+    private static func testLimitResetWatcher() {
+        func limit(_ remaining: Int, key: String = "a") -> WatchedLimit { WatchedLimit(key: key, title: key, remaining: remaining) }
+        var watcher = LimitResetWatcher()
+        expect(watcher.observe([limit(10)]).isEmpty, "first observation never celebrates")
+        expect(watcher.observe([limit(100)]).count == 1, "refill after being near the limit celebrates")
+        expect(watcher.observe([limit(100)]).isEmpty, "a steady full window does not celebrate again")
+        var relaxed = LimitResetWatcher()
+        _ = relaxed.observe([limit(80)])
+        expect(relaxed.observe([limit(100)]).isEmpty, "refill from a comfortable level does not celebrate")
+        var drifting = LimitResetWatcher()
+        _ = drifting.observe([limit(60)])
+        _ = drifting.observe([limit(15)])
+        expect(drifting.observe([limit(95)]).count == 1, "the lowest value since the last reset counts")
+        var independent = LimitResetWatcher()
+        _ = independent.observe([limit(10, key: "a"), limit(10, key: "b")])
+        expect(independent.observe([limit(100, key: "a"), limit(10, key: "b")]).map(\.key) == ["a"], "windows are tracked independently")
     }
 
     private static func expect(_ condition: @autoclosure () -> Bool, _ message: String) {

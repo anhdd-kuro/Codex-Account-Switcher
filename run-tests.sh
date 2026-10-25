@@ -8,6 +8,7 @@ TEST_BINARY="$TEST_BUILD_DIR/InfrastructureTests"
 mkdir -p "$TEST_BUILD_DIR"
 /usr/bin/xcrun swiftc \
   "$ROOT_DIR/Sources/AppInfrastructure.swift" \
+  "$ROOT_DIR/Sources/LimitResetWatcher.swift" \
   "$ROOT_DIR/Tests/InfrastructureTests.swift" \
   -target arm64-apple-macosx14.0 \
   -o "$TEST_BINARY"

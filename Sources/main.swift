@@ -307,6 +307,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             analyticsTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in self?.analytics.refresh() }
         }
         refreshAccounts(force: true)
+        if ProcessInfo.processInfo.environment["CODEX_ACCOUNT_SWITCHER_CELEBRATE"] == "1" {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+                Celebration.celebrate([WatchedLimit(key: "demo", title: "Claude 5h", remaining: 100)], anchor: self?.statusItem.button?.window?.frame)
+            }
+        }
         if showPanelOnLaunch {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
                 self?.showAccountPanel()
@@ -586,7 +591,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
 
+    private var limitResetWatcher = LimitResetWatcher()
+
+    private func watchedLimits() -> [WatchedLimit] {
+        var limits: [WatchedLimit] = []
+        for (email, snapshot) in directUsageSnapshotsByEmail {
+            let name = accounts.first { $0.email == email }.map { displayLabel(for: $0) } ?? email
+            limits.append(WatchedLimit(key: "codex|\(email)|5h", title: "Codex \(name) 5h", remaining: snapshot.fiveHour.remainingPercent))
+            limits.append(WatchedLimit(key: "codex|\(email)|7d", title: "Codex \(name) 7d", remaining: snapshot.weekly.remainingPercent))
+        }
+        for account in claude.accounts where !account.needsLogin {
+            if account.hasFiveHourLimit, let remaining = account.fiveHourRemaining {
+                limits.append(WatchedLimit(key: "claude|\(account.id)|5h", title: "Claude \(account.title) 5h", remaining: remaining))
+            }
+            if let remaining = account.weeklyRemaining {
+                limits.append(WatchedLimit(key: "claude|\(account.id)|7d", title: "Claude \(account.title) 7d", remaining: remaining))
+            }
+        }
+        if let snapshot = cursor.state.snapshot {
+            for (name, used) in [("Plan", snapshot.planUsed), ("Auto", snapshot.autoUsed), ("API", snapshot.apiUsed)] {
+                if let used { limits.append(WatchedLimit(key: "cursor|\(name)", title: "Cursor \(name)", remaining: 100 - used)) }
+            }
+        }
+        return limits
+    }
+
+    private func celebrateLimitResets() {
+        let resets = limitResetWatcher.observe(watchedLimits())
+        guard !resets.isEmpty else { return }
+        Celebration.celebrate(resets, anchor: statusItem.button?.window?.frame)
+    }
+
     private func refreshUI() {
+        celebrateLimitResets()
         if !isSwitching {
             if accounts.contains(where: { $0.isActive }) || claude.active != nil {
                 updateStatusTitle()
@@ -708,6 +745,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             "\(confirmBeforeSwitching)|\(armedSwitchEmail ?? "")",
             "\(launchAtLoginEnabled())|\(remindersEnabled)|\(reminderThreshold)",
             "\(autoSwitchMode.rawValue)|\(autoSwitchThreshold)|\(autoResumeMode.rawValue)",
+            "\(Celebration.toastEnabled)|\(Celebration.confettiEnabled)",
             "\(usageMode.rawValue)|\(claudeUsageMode.rawValue)|\(cursorLane.rawValue)|\(toolbarDisplayStyle.rawValue)|\(activeRefreshInterval)|\(idleRefreshInterval)",
             UserDefaults.standard.string(forKey: selectedRouteBProfileDefaultsKey) ?? "",
             accountLabels().sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: ","),
@@ -974,6 +1012,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             refreshUI()
         case .cursorBarOff, .cursorBarPlan, .cursorBarAuto, .cursorBarApi:
             cursorLane = action == .cursorBarPlan ? .plan : action == .cursorBarAuto ? .auto : action == .cursorBarApi ? .api : .off
+            refreshUI()
+        case .toggleToastOnReset:
+            Celebration.toastEnabled.toggle()
+            refreshUI()
+        case .toggleConfettiOnReset:
+            Celebration.confettiEnabled.toggle()
             refreshUI()
         case .styleDetailed:
             toolbarDisplayStyle = .detailed

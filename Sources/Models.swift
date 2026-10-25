@@ -208,6 +208,8 @@ enum SettingsPanelAction: String {
     case editAutoSwitch
     case editAutoResume
     case toggleConfirmSwitch
+    case toggleToastOnReset
+    case toggleConfettiOnReset
     case toggleProtectCodex
     case editRefresh
     case forceRefresh
