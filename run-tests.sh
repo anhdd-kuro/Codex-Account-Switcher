@@ -6,9 +6,15 @@ TEST_BUILD_DIR="${TMPDIR:-/tmp}/codex-account-switcher-tests"
 TEST_BINARY="$TEST_BUILD_DIR/InfrastructureTests"
 
 mkdir -p "$TEST_BUILD_DIR"
+ANALYTICS_ENGINE=()
+for name in Cursor State Support Models CodexParser ClaudeParser Sessions Controller Scanner SnapshotBuilder Pricing Projects Zstd; do
+  ANALYTICS_ENGINE+=("$ROOT_DIR/Sources/Analytics$name.swift")
+done
+ANALYTICS_ENGINE+=("$ROOT_DIR/Sources/CursorUsage.swift")
 /usr/bin/xcrun swiftc \
   "$ROOT_DIR/Sources/AppInfrastructure.swift" \
   "$ROOT_DIR/Sources/LimitResetWatcher.swift" \
+  "${ANALYTICS_ENGINE[@]}" \
   "$ROOT_DIR/Tests/InfrastructureTests.swift" \
   -target arm64-apple-macosx14.0 \
   -o "$TEST_BINARY"

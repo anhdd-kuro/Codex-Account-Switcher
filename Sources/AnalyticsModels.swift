@@ -6,6 +6,7 @@ import Foundation
 enum AnalyticsSource: String, CaseIterable, Codable {
     case codex
     case claude
+    case cursor
 }
 
 enum AnalyticsPeriod: String, CaseIterable {

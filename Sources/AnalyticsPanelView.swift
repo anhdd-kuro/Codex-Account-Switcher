@@ -120,7 +120,7 @@ struct AnalyticsPanelBuilder {
         card.addSubview(StackedBarView(frame: barFrame, segments: barSegments))
 
         let gap: CGFloat = 8
-        let sourceWidth = (width - tilePadding * 2 - gap) / 2
+        let sourceWidth = (width - tilePadding * 2 - gap * CGFloat(shares.count - 1)) / CGFloat(shares.count)
         for (index, share) in shares.enumerated() {
             let x = tilePadding + CGFloat(index) * (sourceWidth + gap)
             card.addSubview(sourceTile(share, frame: NSRect(x: x, y: 92, width: sourceWidth, height: 44)))
@@ -131,21 +131,26 @@ struct AnalyticsPanelBuilder {
 
     private func sourceTile(_ share: AnalyticsSourceShare, frame: NSRect) -> NSView {
         let view = TileView(frame: frame, fill: theme.controlFill, border: theme.controlBorder, cornerRadius: 8)
-        let isClaude = share.source == .claude
-        let logoColor = isClaude ? MenuBarGlyph.claudeOrange : (theme.isDark ? .white : theme.primaryText)
-        if let image = MenuBarGlyph.logo(isClaude ? "logo-claude" : "logo-openai", size: 12, color: logoColor) {
-            let logo = NSImageView(frame: NSRect(x: 10, y: 9, width: 12, height: 12))
+        let name: String, logoName: String
+        switch share.source {
+        case .codex: (name, logoName) = ("Codex", "logo-openai")
+        case .claude: (name, logoName) = ("Claude", "logo-claude")
+        case .cursor: (name, logoName) = ("Cursor", "logo-cursor")
+        }
+        let logoColor = share.source == .claude ? MenuBarGlyph.claudeOrange : (theme.isDark ? .white : theme.primaryText)
+        if let image = MenuBarGlyph.logo(logoName, size: 12, color: logoColor) {
+            let logo = NSImageView(frame: NSRect(x: 8, y: 9, width: 12, height: 12))
             logo.image = image
             view.addSubview(logo)
         }
-        view.place(makeLabel(isClaude ? "Claude" : "Codex", size: 12, weight: .semibold, color: theme.primaryText), x: 28, y: 7)
+        view.place(makeLabel(name, size: 12, weight: .semibold, color: theme.primaryText), x: 25, y: 7)
         let percent = makeLabel(String(format: "%.1f%%", share.share), size: 12, weight: .medium, color: theme.primaryText, alignment: .right, monospacedDigits: true)
-        view.place(percent, x: frame.width - 10 - 60, y: 7, width: 60)
-        let models = makeLabel(share.modelCount == 1 ? "1 model" : "\(share.modelCount) models", size: 10.5, color: theme.secondaryText)
-        view.place(models, x: 28, y: 24)
-        let tokens = makeLabel(AnalyticsPanelFormat.compact(share.tokens), size: 10.5, color: theme.secondaryText, alignment: .right, monospacedDigits: true)
-        view.place(tokens, x: frame.width - 10 - 70, y: 24, width: 70)
-        view.toolTip = "\(isClaude ? "Claude" : "Codex"): \(AnalyticsPanelFormat.grouped(share.tokens)) tokens"
+        view.place(percent, x: frame.width - 8 - 60, y: 7, width: 60)
+        let models = makeLabel(share.modelCount == 1 ? "1 model" : "\(share.modelCount) models", size: 10, color: theme.secondaryText)
+        view.place(models, x: 25, y: 24)
+        let tokens = makeLabel(AnalyticsPanelFormat.compact(share.tokens), size: 10, color: theme.secondaryText, alignment: .right, monospacedDigits: true)
+        view.place(tokens, x: frame.width - 8 - 70, y: 24, width: 70)
+        view.toolTip = "\(name): \(AnalyticsPanelFormat.grouped(share.tokens)) tokens"
         return view
     }
 

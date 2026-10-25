@@ -34,7 +34,7 @@ Terms used in this repo and where they live. Read this before choosing where a c
 |---|---|
 | TokenTracker | The MIT app this feature is ported from. Credited in the README. |
 | Bucket | Token totals for one UTC half hour, source and model. The only thing persisted besides cursors. |
-| Source | `codex` or `claude`. |
+| Source | `codex`, `claude` or `cursor`. Cursor has no local logs; its tokens come from the account usage export. |
 | File cursor | Inode, byte offset and head/tail fingerprints per log file; lets scans read only new bytes and detect rewrites. |
 | Rollout | A Codex session log, `.jsonl` or `.jsonl.zst`. |
 | Dedup set | Hashed message ids so replayed or forked sessions are not double counted. |

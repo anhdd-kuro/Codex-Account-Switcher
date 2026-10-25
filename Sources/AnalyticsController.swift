@@ -15,6 +15,8 @@ final class AnalyticsController: AnalyticsProviding {
     private var store: AnalyticsStore?
     private var isRefreshing = false
     private var refreshPending = false
+    private var lastCursorSync: Date?
+    private let cursorSyncInterval: TimeInterval = 15 * 60
 
     init(persistence: AnalyticsPersistence = AnalyticsPersistence(directory: AnalyticsPersistence.defaultDirectory),
          roots: AnalyticsLogRoots = .standard(),
@@ -78,7 +80,8 @@ final class AnalyticsController: AnalyticsProviding {
             }
         }
         var lastError = outcome.errors.first
-        if outcome.filesParsed > 0 || store == nil {
+        let cursorChanged = syncCursor(into: &working)
+        if outcome.filesParsed > 0 || store == nil || cursorChanged {
             do {
                 try persistence.save(working)
             } catch {
@@ -90,6 +93,14 @@ final class AnalyticsController: AnalyticsProviding {
         DispatchQueue.main.async { [weak self] in
             self?.finish(snapshot: snapshot, period: period, error: lastError)
         }
+    }
+
+    /// Pulls Cursor's usage export at most every 15 minutes; a failure keeps the previous Cursor totals.
+    private func syncCursor(into store: inout AnalyticsStore) -> Bool {
+        guard CursorUsageClient.isInstalled, lastCursorSync.map({ Date().timeIntervalSince($0) >= cursorSyncInterval }) ?? true else { return false }
+        lastCursorSync = Date()
+        guard let csv = try? CursorUsageClient.fetchUsageCSV() else { return false }
+        return store.replaceCursorUsage(AnalyticsCursorCSV.parse(csv))
     }
 
     private func build(_ store: AnalyticsStore, period: AnalyticsPeriod) -> AnalyticsSnapshot {

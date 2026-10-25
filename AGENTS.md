@@ -61,7 +61,7 @@ Claude fork notes:
 
 - **Codex**: accounts come from `codex-auth`; usage from `chatgpt.com/backend-api/wham/usage`. `plan_type` from that response decides the 5h window: a plan type containing `pro` (ChatGPT Pro, Business premium "prolite") has no 5-hour limit and shows weekly only. `codex-auth` labels the prolite seat "Business", so the label is not enough.
 - **Claude**: `api.anthropic.com/api/oauth/usage`. Every plan shows the 5h window, including Team premium seats. Keep the Keychain rules in "Claude fork notes" above.
-- **Cursor** (`Sources/CursorUsage.swift`): read-only. Token from `cursorAuth/accessToken` in Cursor's `state.vscdb` (via `/usr/bin/sqlite3 -readonly`), user id from `~/.cursor/cli-config.json`, then `cursor.com/api/usage-summary` with the `WorkosCursorSessionToken` cookie. Redirects off cursor.com are refused so the cookie never leaves it. Never log the token or cookie. No switching, no analytics tokens yet.
+- **Cursor** (`Sources/CursorUsage.swift`): read-only. Token from `cursorAuth/accessToken` in Cursor's `state.vscdb` (via `/usr/bin/sqlite3 -readonly`), user id from `~/.cursor/cli-config.json`, then `cursor.com/api/usage-summary` with the `WorkosCursorSessionToken` cookie. Redirects off cursor.com are refused so the cookie never leaves it. Never log the token or cookie. No switching. Token analytics come from the account usage export (`export-usage-events-csv?strategy=tokens`, `AnalyticsCursor.swift`): the export is authoritative, so Cursor buckets from the earliest exported event on are replaced (the earliest half hour never shrinks), other sources are untouched, and the sync runs at most every 15 minutes inside the analytics scan.
 - Menu bar parts per provider: Codex and Claude pick Off, 5-hour, Weekly or Both (two stacked lines); Cursor picks Off, Auto, API or Both (two stacked lines) (default Off). Preferences are plain `UserDefaults` keys (`usageDisplayMode`, `claudeUsageDisplayMode`, `cursorMenuBarLane`, `toastOnReset`, `confettiOnReset`).
 
 ## Analytics
@@ -85,4 +85,3 @@ Claude fork notes:
 ## Open items
 
 - T3 Code and Cursor keep using the old Codex account after a switch: their long-running `codex app-server` processes load the account once. Needs a restart strategy the user has not chosen.
-- Cursor token analytics (TokenTracker pulls `export-usage-events-csv`) is not built.

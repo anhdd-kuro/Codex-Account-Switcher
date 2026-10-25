@@ -155,6 +155,7 @@ enum AnalyticsPanelPalette {
         switch source {
         case .codex: return theme.isDark ? .white.withAlphaComponent(0.88) : theme.primaryText
         case .claude: return MenuBarGlyph.claudeOrange
+        case .cursor: return theme.color(.indigo)
         }
     }
 }

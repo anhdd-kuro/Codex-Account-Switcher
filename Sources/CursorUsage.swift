@@ -156,10 +156,11 @@ enum CursorUsageClient {
         }
     }
 
-    static func fetch() throws -> CursorUsageSnapshot {
+    /// GET with the Cursor session cookie; redirects stay on cursor.com.
+    static func get(_ urlString: String, accept: String, timeout: TimeInterval = 30) throws -> Data {
         guard let cookie = sessionCookie() else { throw CursorUsageError.notSignedIn }
-        var request = URLRequest(url: URL(string: "https://cursor.com/api/usage-summary")!, timeoutInterval: 30)
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        var request = URLRequest(url: URL(string: urlString)!, timeoutInterval: timeout)
+        request.setValue(accept, forHTTPHeaderField: "Accept")
         request.setValue(cookie, forHTTPHeaderField: "Cookie")
         request.setValue("https://www.cursor.com/settings", forHTTPHeaderField: "Referer")
         request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36", forHTTPHeaderField: "User-Agent")
@@ -169,20 +170,33 @@ enum CursorUsageClient {
         defer { session.finishTasksAndInvalidate() }
 
         let semaphore = DispatchSemaphore(value: 0)
-        var result: Result<CursorUsageSnapshot, Error> = .failure(CursorUsageError.malformed)
+        var result: Result<Data, Error> = .failure(CursorUsageError.malformed)
         session.dataTask(with: request) { data, response, error in
             defer { semaphore.signal() }
             if let error { result = .failure(error); return }
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             if status == 401 || status == 403 { result = .failure(CursorUsageError.sessionExpired); return }
-            guard (200..<300).contains(status) else { result = .failure(CursorUsageError.http(status)); return }
-            guard let data, let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                result = .failure(CursorUsageError.malformed); return
-            }
-            result = .success(parse(object))
+            guard (200..<300).contains(status), let data else { result = .failure(CursorUsageError.http(status)); return }
+            result = .success(data)
         }.resume()
-        semaphore.wait()
+        if semaphore.wait(timeout: .now() + timeout + 5) == .timedOut {
+            session.invalidateAndCancel()
+            throw CursorUsageError.http(0)
+        }
         return try result.get()
+    }
+
+    static func fetch() throws -> CursorUsageSnapshot {
+        let data = try get("https://cursor.com/api/usage-summary", accept: "application/json")
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw CursorUsageError.malformed }
+        return parse(object)
+    }
+
+    /// The account's token usage events, `export-usage-events-csv?strategy=tokens` (TokenTracker's source for Cursor analytics).
+    static func fetchUsageCSV() throws -> String {
+        let data = try get("https://cursor.com/api/dashboard/export-usage-events-csv?strategy=tokens", accept: "*/*", timeout: 60)
+        guard let text = String(data: data, encoding: .utf8) else { throw CursorUsageError.malformed }
+        return text
     }
 }
 

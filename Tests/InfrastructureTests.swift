@@ -13,6 +13,7 @@ struct InfrastructureTests {
         try testBackupPruning()
         testProcessRunner()
         testLimitResetWatcher()
+        testCursorUsageExport()
 
         if failures.isEmpty {
             print("Infrastructure tests passed (\(assertionCount) assertions).")
@@ -23,6 +24,51 @@ struct InfrastructureTests {
             FileHandle.standardError.write(Data("FAIL: \(failure)\n".utf8))
         }
         exit(1)
+    }
+
+    private static func testCursorUsageExport() {
+        let csv = """
+        Date,Cloud Agent ID,Automation ID,Kind,Model,Max Mode,Input (w/ Cache Write),Input (w/o Cache Write),Cache Read,Output Tokens,Total Tokens,Cost
+        "2026-10-23T05:46:06.987Z","","","Included","claude-sonnet-5-5-medium","No","24029","4","0","2080","26113","Included"
+        "2026-10-23T05:50:00.000Z","","","Included","claude-sonnet-5-5-medium","No","100","100","50","10","160","Included"
+        "not a date","","","Included","x","No","1","1","1","1","4","Included"
+        "2026-10-23T06:10:00.000Z","","","Included","","No","0","0","0","0","0","Included"
+        """
+        let records = AnalyticsCursorCSV.parse(csv)
+        expect(records.count == 2, "rows with a bad date or no tokens are skipped")
+        expect(records.first?.cacheWrite == 24025 && records.first?.input == 4, "cache write is input with write minus input without")
+        expect(records.first?.counts.total == 26109, "total is input, cache write, cache read and output")
+        expect(AnalyticsCursorCSV.parse("Date,Model\n1,2").isEmpty, "a missing column yields no records")
+
+        let awkward = "\u{FEFF}Date,Model,Input (w/ Cache Write),Input (w/o Cache Write),Cache Read,Output Tokens\r\n\"2026-10-23T05:46:06Z\",\"a,\"\"b\"\"\nc\",\"1e100\",\"NaN\",\"inf\",\"7\"\r\n"
+        let parsed = AnalyticsCursorCSV.parse(awkward)
+        expect(parsed.count == 1 && parsed[0].model == "a,\"b\"\nc" && parsed[0].output == 7, "BOM, CRLF and quoted commas, quotes and newlines parse")
+        expect(parsed.first.map { $0.cacheRead == 0 && $0.input == 0 } == true, "NaN and inf cells count as zero without trapping")
+
+        var store = AnalyticsStore()
+        expect(store.replaceCursorUsage(records), "first import changes the store")
+        expect(store.buckets.values.reduce(0) { $0 + $1.counts.total } == 26109 + 160, "buckets hold every record")
+        expect(!store.replaceCursorUsage(records), "re-importing the same export changes nothing")
+        let later = AnalyticsCursorRecord(seconds: records[0].seconds + 3600, model: "m2", input: 50, cacheWrite: 0, cacheRead: 0, output: 50)
+        store.replaceCursorUsage(records + [later])
+        let corrected = AnalyticsCursorRecord(seconds: later.seconds, model: "m2", input: 1, cacheWrite: 0, cacheRead: 0, output: 1)
+        expect(store.replaceCursorUsage(records + [corrected]), "a corrected export replaces the old rows")
+        expect(store.buckets.values.reduce(0) { $0 + $1.counts.total } == 26109 + 160 + 2, "corrected rows after the earliest event are rebuilt")
+        store = AnalyticsStore()
+        store.replaceCursorUsage(records)
+        let older = AnalyticsCursorRecord(seconds: records[0].seconds - 86_400 * 3, model: "m", input: 5, cacheWrite: 0, cacheRead: 0, output: 5)
+        store.replaceCursorUsage([older])
+        expect(store.buckets.keys.contains { $0.model == "m" } && store.buckets.values.reduce(0) { $0 + $1.counts.total } == 10, "a windowed export wipes only from its earliest event")
+        var partial = AnalyticsStore()
+        partial.buckets[AnalyticsBucketKey(source: .cursor, model: "m", halfHour: AnalyticsTime.halfHour(Double(records[0].seconds)))] = {
+            var bucket = AnalyticsBucket(); bucket.add(AnalyticsCursorRecord(seconds: 0, model: "m", input: 900, cacheWrite: 0, cacheRead: 0, output: 0).counts, conversations: 1, tier: nil); return bucket
+        }()
+        partial.replaceCursorUsage([AnalyticsCursorRecord(seconds: records[0].seconds, model: "m", input: 10, cacheWrite: 0, cacheRead: 0, output: 0)])
+        expect(partial.buckets.values.reduce(0) { $0 + $1.counts.total } == 900, "the earliest half hour of a windowed export never shrinks")
+        var other = AnalyticsStore()
+        other.buckets[AnalyticsBucketKey(source: .codex, model: "gpt", halfHour: 1)] = AnalyticsBucket()
+        other.replaceCursorUsage(records)
+        expect(other.buckets.keys.contains { $0.source == .codex }, "other sources are never touched")
     }
 
     private static func testLimitResetWatcher() {
