@@ -12,15 +12,7 @@ struct CursorUsageSnapshot: Equatable {
 }
 
 enum CursorMenuBarLane: String {
-    case off, auto, api
-
-    func used(in snapshot: CursorUsageSnapshot) -> Int? {
-        switch self {
-        case .off: return nil
-        case .auto: return snapshot.autoUsed
-        case .api: return snapshot.apiUsed
-        }
-    }
+    case off, on
 }
 
 struct CursorUsageState: Equatable {

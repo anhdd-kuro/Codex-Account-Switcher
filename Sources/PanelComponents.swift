@@ -758,6 +758,7 @@ enum MenuBarGlyph {
         let text: String
         let isLow: Bool
         var reset: String? = nil
+        var lines: [String]? = nil
     }
 
     /// Time until `date`: `45m`, `4h`, `3d 4h`.
@@ -769,6 +770,21 @@ enum MenuBarGlyph {
         let days = Int(seconds / 86_400)
         let hours = Int(seconds.truncatingRemainder(dividingBy: 86_400) / 3600)
         return hours > 0 ? "\(days)d \(hours)h" : "\(days)d"
+    }
+
+    /// Two short lines stacked to fit the menu bar height, e.g. `Auto 97%` over `API 61%`.
+    static func stackedImage(_ lines: [String], fontSize: CGFloat, color: NSColor) -> NSImage {
+        let font = NSFont.monospacedDigitSystemFont(ofSize: max(8, fontSize - 3.5), weight: .semibold)
+        let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color]
+        let width = ceil(lines.map { ($0 as NSString).size(withAttributes: attributes).width }.max() ?? 0)
+        let lineHeight = ceil(font.ascender - font.descender)
+        let size = NSSize(width: width, height: lineHeight * CGFloat(lines.count))
+        return NSImage(size: size, flipped: true) { _ in
+            for (index, line) in lines.enumerated() {
+                (line as NSString).draw(at: NSPoint(x: 0, y: CGFloat(index) * lineHeight), withAttributes: attributes)
+            }
+            return true
+        }
     }
 
     /// `[logo] 100% · 4h  |  [logo] 95% · 3d`, shared by the status item and its preview.
@@ -786,7 +802,15 @@ enum MenuBarGlyph {
                 title.append(NSAttributedString(attachment: attachment))
                 title.append(NSAttributedString(string: " ", attributes: [.font: font, .kern: compact ? 0 : 1.5]))
             }
-            title.append(NSAttributedString(string: part.text, attributes: [.font: font, .foregroundColor: part.isLow ? lowColor : textColor]))
+            if let lines = part.lines {
+                let stacked = stackedImage(lines, fontSize: fontSize, color: part.isLow ? lowColor : textColor)
+                let attachment = NSTextAttachment()
+                attachment.image = stacked
+                attachment.bounds = NSRect(x: 0, y: (font.capHeight - stacked.size.height) / 2, width: stacked.size.width, height: stacked.size.height)
+                title.append(NSAttributedString(attachment: attachment))
+            } else {
+                title.append(NSAttributedString(string: part.text, attributes: [.font: font, .foregroundColor: part.isLow ? lowColor : textColor]))
+            }
             if let reset = part.reset {
                 title.append(NSAttributedString(string: " · \(reset)", attributes: [.font: font, .foregroundColor: separatorColor]))
             }

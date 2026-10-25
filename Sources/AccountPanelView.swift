@@ -848,8 +848,7 @@ final class AccountSwitcherPanelView: NSView {
 
         let cursorRow: [SettingsRow] = cursor.isInstalled ? [segmentedRow("Cursor", options: [
             ("Off", cursorLane == .off, .cursorBarOff),
-            ("Auto", cursorLane == .auto, .cursorBarAuto),
-            ("API", cursorLane == .api, .cursorBarApi)
+            ("Show", cursorLane == .on, .cursorBarOn)
         ], theme: theme)] : []
         y = addSection("Menu bar", rows: [
             segmentedRow("Codex", options: [
@@ -875,6 +874,7 @@ final class AccountSwitcherPanelView: NSView {
             popupRow("Auto-resume", detail: "Continue the Codex task after a switch", value: autoResumeText(), action: .editAutoResume, theme: theme),
             toggleRow("Toast on limit reset", detail: "Show a brief message when a limit resets", isOn: Celebration.toastEnabled, action: .toggleToastOnReset, theme: theme),
             toggleRow("Fireworks on limit reset", detail: "Celebrate when a limit refills after you were near it", isOn: Celebration.confettiEnabled, action: .toggleConfettiOnReset, theme: theme),
+            popupRow("Test celebration", detail: "Play the toast and fireworks now", value: "Play", action: .testCelebration, theme: theme),
             toggleRow("Confirm before switching", detail: "Click once to arm, again to relaunch", isOn: confirmBeforeSwitching, action: .toggleConfirmSwitch, theme: theme)
         ], into: body, y: y, theme: theme)
 
@@ -1320,7 +1320,7 @@ extension AccountSwitcherPanelView {
     fileprivate func buildCursorCard(into body: NSView, y: CGFloat, theme: PanelTheme) -> CGFloat {
         let snapshot = cursor.snapshot
         let reset = MenuBarGlyph.relativeReset(snapshot?.resetAt) ?? ""
-        let lanes: [(String, Int?)] = [("Auto", snapshot?.autoUsed), ("API", snapshot?.apiUsed)]
+        let lanes: [(String, Int?)] = [("Plan", snapshot?.planUsed), ("Auto", snapshot?.autoUsed), ("API", snapshot?.apiUsed)]
         let windows = lanes.compactMap { lane -> (String, Int?, String)? in
             lane.1.map { (lane.0, 100 - $0, reset) }
         }

@@ -1010,9 +1010,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         case .claudeUsageFiveHour:
             claudeUsageMode = .fiveHour
             refreshUI()
-        case .cursorBarOff, .cursorBarAuto, .cursorBarApi:
-            cursorLane = action == .cursorBarAuto ? .auto : action == .cursorBarApi ? .api : .off
+        case .cursorBarOff, .cursorBarOn:
+            cursorLane = action == .cursorBarOn ? .on : .off
             refreshUI()
+        case .testCelebration:
+            Celebration.celebrate([WatchedLimit(key: "test", title: "Claude 5h", remaining: 100)], anchor: statusItem.button?.window?.frame)
         case .toggleToastOnReset:
             Celebration.toastEnabled.toggle()
             refreshUI()
@@ -1568,10 +1570,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             let reset = account.needsLogin ? nil : MenuBarGlyph.relativeReset(claudeUsageMode == .fiveHour && account.hasFiveHourLimit ? account.fiveHourResetAt : account.weeklyResetAt)
             parts.append((.init(logo: "logo-claude", text: account.needsLogin ? "Sign in" : remainingPercentText(fromUsed: percent), isLow: account.needsLogin || (percent ?? 100) < 10, reset: reset), "Claude \(account.title) \(remainingPercentText(fromUsed: percent)) left"))
         }
-        if cursorLane != .off, let snapshot = cursor.state.snapshot, let used = cursorLane.used(in: snapshot) {
-            let left = 100 - used
-            let text = remainingPercentText(fromUsed: left)
-            parts.append((.init(logo: "logo-cursor", text: text, isLow: left < 10, reset: MenuBarGlyph.relativeReset(snapshot.resetAt)), "Cursor \(cursorLane.rawValue) \(text) left"))
+        if cursorLane == .on, let snapshot = cursor.state.snapshot, let auto = snapshot.autoUsed, let api = snapshot.apiUsed {
+            let lines = ["Auto \(100 - auto)%", "API \(100 - api)%"]
+            parts.append((.init(logo: "logo-cursor", text: lines.joined(separator: " "), isLow: min(100 - auto, 100 - api) < 10, reset: nil, lines: lines), "Cursor \(lines.joined(separator: ", ")) left"))
         }
         return parts
     }
