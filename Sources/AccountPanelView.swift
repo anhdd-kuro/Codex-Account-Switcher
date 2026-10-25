@@ -43,6 +43,7 @@ final class AccountSwitcherPanelView: NSView {
     private let codexUsageByEmail: [String: DirectUsageSnapshot]
     private let menuBarPreview: [MenuBarGlyph.UsagePart]
     private let analytics: AnalyticsPanelModel
+    private let cursor: CursorUsageState
     private static var analyticsBreakdown: AnalyticsBreakdownMode = .daily
 
     static let panelWidth: CGFloat = 452
@@ -89,6 +90,7 @@ final class AccountSwitcherPanelView: NSView {
         toggleLaunchAtLogin: @escaping () -> Void,
         claude: ClaudePanelModel = .empty,
         codexUsageByEmail: [String: DirectUsageSnapshot] = [:],
+        cursor: CursorUsageState = CursorUsageState(),
         menuBarPreview: [MenuBarGlyph.UsagePart] = [],
         analytics: AnalyticsPanelModel = .empty
     ) {
@@ -131,6 +133,7 @@ final class AccountSwitcherPanelView: NSView {
         self.codexUsageByEmail = codexUsageByEmail
         self.menuBarPreview = menuBarPreview
         self.analytics = analytics
+        self.cursor = cursor
         super.init(frame: NSRect(origin: .zero, size: Self.preferredSize(mode: mode, accountCount: accounts.count + claude.accounts.count)))
         wantsLayer = true
         build()
@@ -460,10 +463,13 @@ final class AccountSwitcherPanelView: NSView {
         var y = sectionHeader("Codex", logo: "logo-openai", addLabel: "Add Codex account", add: { [weak self] in self?.performSettingsAction(.addAccount) }, into: body, y: 0, theme: theme)
         y = buildCodexCards(into: body, y: y, theme: theme)
         y = sectionHeader("Claude", logo: "logo-claude", addLabel: "Add Claude account", add: { [weak self] in self?.claude.signIn(nil) }, into: body, y: y + 6, theme: theme)
-        return buildClaudeCards(into: body, y: y, theme: theme)
+        y = buildClaudeCards(into: body, y: y, theme: theme)
+        guard cursor.isInstalled else { return y }
+        y = sectionHeader("Cursor", logo: "logo-cursor", addLabel: nil, add: {}, into: body, y: y + 6, theme: theme)
+        return buildCursorCard(into: body, y: y, theme: theme)
     }
 
-    private func sectionHeader(_ title: String, logo: String, addLabel: String, add: @escaping () -> Void, into body: NSView, y: CGFloat, theme: PanelTheme) -> CGFloat {
+    private func sectionHeader(_ title: String, logo: String, addLabel: String?, add: @escaping () -> Void, into body: NSView, y: CGFloat, theme: PanelTheme) -> CGFloat {
         let height: CGFloat = 24
         if let image = MenuBarGlyph.logo(logo, size: 13, color: logo == "logo-claude" ? MenuBarGlyph.claudeOrange : (theme.isDark ? .white : theme.primaryText)) {
             let view = NSImageView(frame: NSRect(x: inset + 4, y: y + (height - 13) / 2, width: 13, height: 13))
@@ -472,9 +478,11 @@ final class AccountSwitcherPanelView: NSView {
         }
         let label = makeLabel(title, size: 11.5, weight: .semibold, color: theme.secondaryText)
         body.place(label, x: inset + 23, y: y + (height - label.frame.height) / 2, width: 120)
-        let button = GlassButton(symbol: "plus", style: .icon, theme: theme, height: 24, fontSize: 10, accessibilityLabel: addLabel, onPress: add)
-        button.toolTip = addLabel
-        body.place(button, x: Self.panelWidth - inset - button.frame.width, y: y + (height - button.frame.height) / 2)
+        if let addLabel {
+            let button = GlassButton(symbol: "plus", style: .icon, theme: theme, height: 24, fontSize: 10, accessibilityLabel: addLabel, onPress: add)
+            button.toolTip = addLabel
+            body.place(button, x: Self.panelWidth - inset - button.frame.width, y: y + (height - button.frame.height) / 2)
+        }
         return y + height + 6
     }
 
@@ -1291,6 +1299,37 @@ final class AccountSwitcherPanelView: NSView {
             }
         }
         return nil
+    }
+}
+
+// MARK: - Cursor
+
+extension AccountSwitcherPanelView {
+    fileprivate func buildCursorCard(into body: NSView, y: CGFloat, theme: PanelTheme) -> CGFloat {
+        let snapshot = cursor.snapshot
+        let reset = MenuBarGlyph.relativeReset(snapshot?.resetAt) ?? ""
+        let lanes: [(String, Int?)] = [("Plan", snapshot?.planUsed), ("Auto", snapshot?.autoUsed), ("API", snapshot?.apiUsed)]
+        let windows = lanes.compactMap { lane -> (String, Int?, String)? in
+            lane.1.map { (lane.0, 100 - $0, reset) }
+        }
+        let plan = snapshot?.membership.map { $0.prefix(1).uppercased() + $0.dropFirst() } ?? "Cursor"
+        let card = usageCard(
+            UsageCard(
+                title: "Cursor \(plan)",
+                detail: cursor.error ?? "",
+                isActive: true,
+                needsLogin: false,
+                windows: windows,
+                tooltip: cursor.error,
+                switchAction: nil
+            ),
+            trailing: [],
+            divider: false,
+            theme: theme,
+            y: y
+        )
+        body.addSubview(card)
+        return card.frame.maxY + 12
     }
 }
 

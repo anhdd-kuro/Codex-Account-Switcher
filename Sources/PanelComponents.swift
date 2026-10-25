@@ -683,7 +683,7 @@ final class UsageBarRowView: NSView {
         let valueAttributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: theme.primaryText]
         let resetAttributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: theme.tertiaryText]
         let textY = (bounds.height - font.boundingRectForFont.height) / 2 + 1
-        let labelWidth: CGFloat = 26
+        let labelWidth: CGFloat = 30
         let resetWidth: CGFloat = 50
         let valueWidth: CGFloat = 40
 

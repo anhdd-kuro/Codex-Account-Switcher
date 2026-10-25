@@ -93,6 +93,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var updateHealthColor = NSColor.systemOrange
     private var resetCreditsByEmail: [String: ResetCreditsSnapshot] = [:]
     private let claude = ClaudeController()
+    private let cursor = CursorUsageController()
+    private var cursorTimer: Timer?
     private let analytics = AnalyticsController()
     private var analyticsTimer: Timer?
     private var notifiedClaudeKeys = Set<String>()
@@ -294,6 +296,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         claude.refresh()
         if !demoMode {
             analytics.onChange = { [weak self] in self?.refreshAccountPanelContentIfVisible() }
+            cursor.onChange = { [weak self] in self?.refreshAccountPanelContentIfVisible() }
+            cursor.refresh()
+            cursorTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in self?.cursor.refresh() }
             analytics.refresh()
             analyticsTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in self?.analytics.refresh() }
         }
@@ -705,6 +710,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             health,
             resets,
             String(describing: claude.accounts),
+            String(describing: cursor.state),
             "\(analytics.period)|\(analytics.snapshot.map { "\($0.period)" } ?? "")|\(analytics.snapshot?.scannedAt.timeIntervalSince1970 ?? 0)|\(analytics.status.lastError ?? "")|\(analytics.snapshot == nil ? "\(analytics.status.isScanning)|\(analytics.status.processedBytes)" : "")",
             "\(claude.isSwitching)|\(claude.lastError ?? "")|\(claude.updatedText)"
         ].joined(separator: "\u{1E}")
@@ -792,6 +798,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 }
             ),
             codexUsageByEmail: directUsageSnapshotsByEmail,
+            cursor: cursor.state,
             menuBarPreview: menuBarUsageParts().map(\.part),
             analytics: AnalyticsPanelModel(
                 snapshot: analytics.snapshot,

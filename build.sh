@@ -23,7 +23,7 @@ elif [[ -f "/Applications/ChatGPT.app/Contents/Resources/icon.icns" ]]; then
   cp "/Applications/ChatGPT.app/Contents/Resources/icon.icns" "$RESOURCES_DIR/AccountSwitcherIcon.icns"
 fi
 
-cp "$ROOT_DIR/Sources/logo-openai.svg" "$ROOT_DIR/Sources/logo-claude.svg" "$RESOURCES_DIR/"
+cp "$ROOT_DIR/Sources/logo-openai.svg" "$ROOT_DIR/Sources/logo-claude.svg" "$ROOT_DIR/Sources/logo-cursor.svg" "$RESOURCES_DIR/"
 cp "$ROOT_DIR/Resources/analytics-pricing.json" "$RESOURCES_DIR/"
 
 if [[ -f "$TOOLBAR_ICON_SOURCE" ]]; then
