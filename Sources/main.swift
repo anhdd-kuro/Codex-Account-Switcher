@@ -1569,8 +1569,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             parts.append((.init(logo: "logo-claude", text: account.needsLogin ? "Sign in" : remainingPercentText(fromUsed: percent), isLow: account.needsLogin || (percent ?? 100) < 10, reset: reset), "Claude \(account.title) \(remainingPercentText(fromUsed: percent)) left"))
         }
         if cursorLane != .off, let snapshot = cursor.state.snapshot, let used = cursorLane.used(in: snapshot) {
-            let text = remainingPercentText(fromUsed: used)
-            parts.append((.init(logo: "logo-cursor", text: text, isLow: 100 - used < 10, reset: MenuBarGlyph.relativeReset(snapshot.resetAt)), "Cursor \(cursorLane.rawValue) \(text) left"))
+            let left = 100 - used
+            let text = remainingPercentText(fromUsed: left)
+            parts.append((.init(logo: "logo-cursor", text: text, isLow: left < 10, reset: MenuBarGlyph.relativeReset(snapshot.resetAt)), "Cursor \(cursorLane.rawValue) \(text) left"))
         }
         return parts
     }
