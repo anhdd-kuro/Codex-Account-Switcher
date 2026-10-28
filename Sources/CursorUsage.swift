@@ -30,7 +30,7 @@ enum CursorUsageError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .notSignedIn: return "Sign in to Cursor"
+        case .notSignedIn: return "Sign in to Cursor CLI — run cursor-agent login"
         case .sessionExpired: return "Cursor session expired — reopen Cursor"
         case .http(let code): return "Cursor API returned \(code)"
         case .malformed: return "Unexpected Cursor response"
@@ -51,8 +51,30 @@ enum CursorUsageClient {
         return FileManager.default.fileExists(atPath: appDirectory.path, isDirectory: &isDirectory) && isDirectory.boolValue
     }
 
-    /// The `cursorAuth/accessToken` JWT, read read-only through the system sqlite3.
+    /// Keychain item the Cursor CLI writes its session JWT to.
+    static let keychainService = "cursor-access-token"
+
+    /// First unexpired session JWT: the CLI's Keychain item, then the IDE's database.
+    /// Newer IDE builds store an opaque `cursor-…` token there, which cursor.com rejects.
     static func accessToken() -> String? {
+        [keychainToken(), databaseToken()].compactMap { $0 }.first(where: isUsableJWT)
+    }
+
+    static func keychainToken() -> String? {
+        let result = ProcessRunner.run("/usr/bin/security", ["find-generic-password", "-s", keychainService, "-w"], environment: [:], timeout: 5)
+        guard result.status == 0 else { return nil }
+        let token = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        return token.isEmpty ? nil : token
+    }
+
+    static func isUsableJWT(_ token: String) -> Bool {
+        guard let claims = jwtClaims(token) else { return false }
+        guard let expiry = (claims["exp"] as? NSNumber)?.doubleValue else { return true }
+        return expiry > Date().timeIntervalSince1970 + 60
+    }
+
+    /// The `cursorAuth/accessToken` value, read read-only through the system sqlite3.
+    static func databaseToken() -> String? {
         guard FileManager.default.fileExists(atPath: stateDatabase.path) else { return nil }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
@@ -81,22 +103,25 @@ enum CursorUsageClient {
         return oauthSubject.firstMatch(in: subject, range: range) != nil ? subject : nil
     }
 
-    static func userID(jwt: String) -> String? {
-        if let data = try? Data(contentsOf: cliConfig),
-           let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let auth = object["authInfo"] as? [String: Any],
-           let id = auth["authId"] as? String,
-           let normalized = normalizedSubject(id) {
-            return normalized
-        }
-        let parts = jwt.split(separator: ".")
+    static func jwtClaims(_ jwt: String) -> [String: Any]? {
+        let parts = jwt.split(separator: ".", omittingEmptySubsequences: false)
         guard parts.count == 3 else { return nil }
         var payload = String(parts[1]).replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
         payload += String(repeating: "=", count: (4 - payload.count % 4) % 4)
-        guard let data = Data(base64Encoded: payload),
+        guard let data = Data(base64Encoded: payload) else { return nil }
+        return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    }
+
+    /// The token's own subject, so the cookie never pairs one user's id with another's token.
+    static func userID(jwt: String) -> String? {
+        if let subject = jwtClaims(jwt)?["sub"] as? String, let normalized = normalizedSubject(subject) {
+            return normalized
+        }
+        guard let data = try? Data(contentsOf: cliConfig),
               let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let subject = object["sub"] as? String else { return nil }
-        return normalizedSubject(subject)
+              let auth = object["authInfo"] as? [String: Any],
+              let id = auth["authId"] as? String else { return nil }
+        return normalizedSubject(id)
     }
 
     static func sessionCookie() -> String? {
