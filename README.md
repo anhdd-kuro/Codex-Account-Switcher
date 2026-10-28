@@ -1,20 +1,18 @@
 <p align="center">
-  <a href="https://lordydord.github.io/Codex-Account-Switcher/">
-    <img src="assets/readme-hero.png" alt="Codex Account Switcher: the account panel hanging from the Mac menu bar, showing 31% of the 5-hour limit left" width="100%">
-  </a>
+  <img src="assets/readme-hero.png" alt="Agent Account Switcher: the Accounts panel with Codex, Claude and Cursor limits, next to the menu bar item" width="100%">
 </p>
 
-<h1 align="center">AI Account Switcher</h1>
+<h1 align="center">Agent Account Switcher</h1>
 
 <p align="center">
-  Switch Codex accounts without breaking your flow.<br>
-  A free menu bar app for Mac that shows how much of each ChatGPT account’s Codex limit is left, and switches accounts in one click.
+  Codex, Claude Code and Cursor limits in one Mac menu bar app.<br>
+  See what’s left on every account and switch Codex or Claude accounts in one click.
 </p>
 
 <p align="center">
-  <a href="https://github.com/lordydord/Codex-Account-Switcher/releases/latest"><strong>Download for Mac</strong></a>
+  <a href="#build-from-source"><strong>Build from source</strong></a>
   &nbsp;·&nbsp;
-  <a href="https://lordydord.github.io/Codex-Account-Switcher/">Website</a>
+  <a href="https://github.com/lordydord/Codex-Account-Switcher">Upstream project</a>
   &nbsp;·&nbsp;
   <a href="CHANGELOG.md">What’s new</a>
 </p>
@@ -40,13 +38,13 @@ If you use Codex with more than one ChatGPT account, you know the routine: a lim
 
 <table>
   <tr>
-    <td width="33%" valign="top"><img src="assets/screenshot-accounts.png" alt="Accounts tab with the active account’s 5-hour and weekly rings and a second account to switch to"></td>
-    <td width="33%" valign="top"><img src="assets/screenshot-resets.png" alt="Resets tab listing five reset credits across two accounts, coloured by how soon they expire"></td>
-    <td width="33%" valign="top"><img src="assets/screenshot-settings.png" alt="Settings tab with menu bar options and automation switches"></td>
+    <td width="33%" valign="top"><img src="assets/screenshot-accounts.png" alt="Accounts tab with Codex, Claude and Cursor sections, each account’s 5-hour and weekly bars"></td>
+    <td width="33%" valign="top"><img src="assets/screenshot-analytics.png" alt="Analytics tab with monthly token totals by source, top models, an activity heatmap and a usage trend"></td>
+    <td width="33%" valign="top"><img src="assets/screenshot-settings.png" alt="Settings tab with per-provider menu bar options, a menu bar preview and automation switches"></td>
   </tr>
   <tr>
     <td align="center"><sub>Accounts</sub></td>
-    <td align="center"><sub>Resets</sub></td>
+    <td align="center"><sub>Analytics</sub></td>
     <td align="center"><sub>Settings</sub></td>
   </tr>
 </table>
@@ -83,7 +81,7 @@ total tokens and estimated USD cost per day, week, month or the last 24 months, 
 
 ## Install
 
-1. Download the latest version from [Releases](https://github.com/lordydord/Codex-Account-Switcher/releases/latest), unzip it and move **Codex Account Switcher** to Applications.
+1. [Build from source](#build-from-source), or download an upstream build from [Releases](https://github.com/lordydord/Codex-Account-Switcher/releases/latest) (Codex only), and move **AI Account Switcher** to Applications.
 2. The app isn’t notarised yet, so the first time, right-click it and choose **Open**.
 3. Install [codex-auth](https://www.npmjs.com/package/@loongphy/codex-auth) and sign in once for each ChatGPT account:
 
@@ -121,8 +119,8 @@ Reset credits work the same careful way: using one always asks first. The app ne
 You’ll need the Xcode command line tools.
 
 ```bash
-git clone https://github.com/lordydord/Codex-Account-Switcher.git
-cd Codex-Account-Switcher
+git clone https://github.com/anhdd-kuro/agent-account-switcher.git
+cd agent-account-switcher
 ./run-tests.sh      # infrastructure and reset-logic checks
 ./build.sh          # builds build/AI Account Switcher.app
 ./install.sh        # copies it to /Applications
